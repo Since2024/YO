@@ -1,0 +1,98 @@
+{
+  "business_name": {
+    "text": "ABC MANU FACTU RING CORP",
+    "confidence": 85.8,
+    "field_name": "business_name",
+    "coordinates": {
+      "x": 360,
+      "y": 450,
+      "width": 900,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "tax_id": {
+    "text": "",
+    "confidence": 0.0,
+    "field_name": "tax_id",
+    "coordinates": {
+      "x": 1350,
+      "y": 450,
+      "width": 450,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  },
+  "business_address": {
+    "text": "[123 INDUSTRIALELVD",
+    "confidence": 66.0,
+    "field_name": "business_address",
+    "coordinates": {
+      "x": 360,
+      "y": 600,
+      "width": 1050,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "city_state_zip": {
+    "text": "[cuicaco",
+    "confidence": 67.0,
+    "field_name": "city_state_zip",
+    "coordinates": {
+      "x": 360,
+      "y": 750,
+      "width": 1050,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "annual_revenue": {
+    "text": "ae",
+    "confidence": 44.0,
+    "field_name": "annual_revenue",
+    "coordinates": {
+      "x": 1200,
+      "y": 1050,
+      "width": 360,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  },
+  "total_expenses": {
+    "text": "Pal",
+    "confidence": 27.0,
+    "field_name": "total_expenses",
+    "coordinates": {
+      "x": 1200,
+      "y": 1200,
+      "width": 360,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  },
+  "net_income": {
+    "text": "Net income: ___",
+    "confidence": 25.333333333333332,
+    "field_name": "net_income",
+    "coordinates": {
+      "x": 1200,
+      "y": 1350,
+      "width": 360,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  },
+  "tax_year": {
+    "text": "[2024",
+    "confidence": 39.0,
+    "field_name": "tax_year",
+    "coordinates": {
+      "x": 1500,
+      "y": 300,
+      "width": 240,
+      "height": 75
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  }
+}
