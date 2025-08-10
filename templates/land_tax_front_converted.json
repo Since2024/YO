@@ -1,0 +1,104 @@
+{
+  "name": "सम्पत्ति तथा भूमिकर फारम",
+  "description": "Real-world template for सम्पत्ति तथा भूमिकर फारम",
+  "version": "1.0",
+  "source": "GitHub repository - Since2024/FirstChild",
+  "fields": [
+    {
+      "name": "आर्थिक संकेत नं",
+      "x": 115,
+      "y": 88,
+      "width": 182,
+      "height": 38,
+      "page": 1,
+      "ocr_psm": 8,
+      "description": "आर्थिक संकेत नं field",
+      "field_type": "box_grid",
+      "confidence": 0.95
+    },
+    {
+      "name": "जग्गा/धनीको नाम/थर",
+      "x": 280,
+      "y": 318,
+      "width": 480,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "जग्गा/धनीको नाम/थर field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "बाबु/पतिको नाम/थर",
+      "x": 280,
+      "y": 362,
+      "width": 480,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "बाबु/पतिको नाम/थर field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "बाजे/ससुराको नाम/थर",
+      "x": 305,
+      "y": 406,
+      "width": 455,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "बाजे/ससुराको नाम/थर field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "जग्गाधनीको नाम नं",
+      "x": 290,
+      "y": 450,
+      "width": 470,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "जग्गाधनीको नाम नं field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "जग्गाधनीको स्थायी ठेगाना",
+      "x": 340,
+      "y": 494,
+      "width": 420,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "जग्गाधनीको स्थायी ठेगाना field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "मोबाइल नं",
+      "x": 225,
+      "y": 538,
+      "width": 535,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "मोबाइल नं field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "ई-मेल",
+      "x": 180,
+      "y": 582,
+      "width": 580,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "ई-मेल field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    }
+  ]
+}

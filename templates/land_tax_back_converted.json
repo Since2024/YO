@@ -1,0 +1,80 @@
+{
+  "name": "सम्पत्ति/भूमि कर फारम (विवरण पृष्ठ)",
+  "description": "Real-world template for सम्पत्ति/भूमि कर फारम (विवरण पृष्ठ)",
+  "version": "1.0",
+  "source": "GitHub repository - Since2024/FirstChild",
+  "fields": [
+    {
+      "name": "नाम थर",
+      "x": 30,
+      "y": 90,
+      "width": 100,
+      "height": 25,
+      "page": 2,
+      "ocr_psm": 7,
+      "description": "नाम थर field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "ठेगाना",
+      "x": 30,
+      "y": 130,
+      "width": 100,
+      "height": 25,
+      "page": 2,
+      "ocr_psm": 7,
+      "description": "ठेगाना field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "जग्गा/सम्पत्तिसँगको नाता",
+      "x": 30,
+      "y": 170,
+      "width": 200,
+      "height": 25,
+      "page": 2,
+      "ocr_psm": 7,
+      "description": "जग्गा/सम्पत्तिसँगको नाता field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "मोबाइल नं",
+      "x": 30,
+      "y": 210,
+      "width": 100,
+      "height": 25,
+      "page": 2,
+      "ocr_psm": 7,
+      "description": "मोबाइल नं field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "मिति",
+      "x": 30,
+      "y": 250,
+      "width": 50,
+      "height": 25,
+      "page": 2,
+      "ocr_psm": 7,
+      "description": "मिति field",
+      "field_type": "text_line",
+      "confidence": 0.95
+    },
+    {
+      "name": "दस्तखत",
+      "x": 30,
+      "y": 290,
+      "width": 100,
+      "height": 25,
+      "page": 2,
+      "ocr_psm": 7,
+      "description": "दस्तखत field",
+      "field_type": "signature_line",
+      "confidence": 0.95
+    }
+  ]
+}
