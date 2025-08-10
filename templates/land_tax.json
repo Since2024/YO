@@ -1,0 +1,128 @@
+{
+  "name": "Land Tax Form Template", 
+  "description": "Template for processing property/land tax forms (Sampati Tax)",
+  "version": "1.0",
+  "created_date": "2025-01-01",
+  "fields": [
+    {
+      "name": "property_owner_name",
+      "x": 150,
+      "y": 120,
+      "width": 280,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "Property owner full name"
+    },
+    {
+      "name": "property_id",
+      "x": 450,
+      "y": 120,
+      "width": 150,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 8,
+      "description": "Property identification number"
+    },
+    {
+      "name": "property_address",
+      "x": 150,
+      "y": 170,
+      "width": 400,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 6,
+      "description": "Property address"
+    },
+    {
+      "name": "district",
+      "x": 150,
+      "y": 220,
+      "width": 180,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "District name"
+    },
+    {
+      "name": "tehsil",
+      "x": 350,
+      "y": 220,
+      "width": 180,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "Tehsil/Taluka name"
+    },
+    {
+      "name": "village",
+      "x": 150,
+      "y": 270,
+      "width": 200,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 7,
+      "description": "Village name"
+    },
+    {
+      "name": "survey_number",
+      "x": 380,
+      "y": 270,
+      "width": 150,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 8,
+      "description": "Survey number or plot number"
+    },
+    {
+      "name": "area_acres",
+      "x": 200,
+      "y": 350,
+      "width": 100,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 6,
+      "description": "Area in acres"
+    },
+    {
+      "name": "area_guntha",
+      "x": 320,
+      "y": 350,
+      "width": 100,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 6,
+      "description": "Area in guntha"
+    },
+    {
+      "name": "assessed_value",
+      "x": 400,
+      "y": 400,
+      "width": 130,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 6,
+      "description": "Assessed property value"
+    },
+    {
+      "name": "tax_amount",
+      "x": 400,
+      "y": 450,
+      "width": 130,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 6,
+      "description": "Land tax amount due"
+    },
+    {
+      "name": "financial_year",
+      "x": 480,
+      "y": 80,
+      "width": 100,
+      "height": 25,
+      "page": 1,
+      "ocr_psm": 8,
+      "description": "Financial year (YYYY-YY)"
+    }
+  ]
+}
