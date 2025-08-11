@@ -122,6 +122,66 @@ Templates are JSON files that define field positions and OCR parameters:
 
 ## 🖥️ Usage
 
+### Scanner and Overlay CLI Tool
+
+The application includes a dedicated CLI tool for scanner and overlay operations:
+
+```bash
+python scanner_cli.py <command> [options]
+```
+
+#### Available Commands
+
+**Scanner Operations:**
+- `list-scanners` - List available scanners
+- `test-scanner` - Test scanner functionality
+- `scan` - Scan physical documents
+
+**Overlay Operations:**
+- `list-overlays` - List available overlay templates
+- `create-overlay` - Create new overlay template
+- `overlay` - Create overlay on form
+- `scan-overlay` - Scan and overlay in one operation
+
+#### Examples
+
+1. **List available scanners**:
+   ```bash
+   python scanner_cli.py list-scanners
+   ```
+
+2. **Test scanner functionality**:
+   ```bash
+   python scanner_cli.py test-scanner --scanner "HP LaserJet"
+   ```
+
+3. **Scan a document**:
+   ```bash
+   python scanner_cli.py scan --output scanned_document.png --dpi 300
+   ```
+
+4. **Scan multiple pages**:
+   ```bash
+   python scanner_cli.py scan --multi-page --output scanned_pages/
+   ```
+
+5. **Create overlay on form**:
+   ```bash
+   python scanner_cli.py overlay \
+     --input form.png \
+     --template templates/business_tax.json \
+     --overlay-template business_tax_overlay \
+     --output filled_form.png
+   ```
+
+6. **Scan and overlay in one operation**:
+   ```bash
+   python scanner_cli.py scan-overlay \
+     --template templates/business_tax.json \
+     --overlay-template business_tax_overlay \
+     --output final_form.png
+   ```
+
 ### Basic Command Structure
 ```bash
 python main.py --input <input_file> --template <template_file> --output <output_file>
@@ -155,24 +215,60 @@ python main.py --input <input_file> --template <template_file> --output <output_
      --lang hin
    ```
 
+4. **Scan physical document and process**:
+   ```bash
+   python main.py \
+     --scan \
+     --template templates/business_tax.json \
+     --output output/filled_forms/scanned_form.pdf
+   ```
+
+5. **Create overlay on physical form**:
+   ```bash
+   python main.py \
+     --scan \
+     --overlay \
+     --overlay-template business_tax_overlay \
+     --template templates/business_tax.json \
+     --output output/overlayed/overlayed_form.png
+   ```
+
 ### Command Line Options
 
 | Option | Short | Required | Description |
 |--------|--------|----------|-------------|
-| `--input` | `-i` | Yes | Path to input PDF or image file |
+| `--input` | `-i` | Yes* | Path to input PDF or image file (*not required with --scan) |
 | `--template` | `-t` | Yes | Path to JSON template file |
 | `--output` | `-o` | Yes | Path for output filled PDF |
 | `--lang` | `-l` | No | OCR language code (default: eng) |
 | `--debug` | `-d` | No | Enable debug mode with detailed logging |
+| `--scan` | `-s` | No | Use scanner to scan physical document |
+| `--scanner` | `-sc` | No | Specify scanner device name |
+| `--overlay` | `-o` | No | Use overlay template for physical form processing |
+| `--overlay-template` | `-ot` | No | Specify overlay template name |
 
 ## 📊 System Workflow
 
+### Standard Processing
 1. **Input Processing**: Convert PDFs to images, normalize resolution
 2. **Template Loading**: Load and validate JSON template
 3. **OCR Extraction**: Extract text from defined field regions
 4. **Confidence Analysis**: Calculate OCR confidence scores
 5. **PDF Generation**: Create filled PDF with extracted data
 6. **Output**: Save filled PDF and extraction results (JSON)
+
+### Scanner Integration
+1. **Scanner Detection**: Automatically detect available scanners
+2. **Document Scanning**: Scan physical documents using printer/scanner hardware
+3. **Image Processing**: Normalize scanned images for OCR
+4. **OCR Extraction**: Extract text from scanned documents
+5. **Output Generation**: Create filled PDF or overlay on physical form
+
+### Overlay System
+1. **Form Scanning**: Scan physical form templates
+2. **Data Extraction**: Extract data using OCR from source documents
+3. **Overlay Processing**: Overlay extracted data onto form templates
+4. **Form Generation**: Create filled physical forms with overlaid data
 
 ## 🔧 Configuration
 
@@ -185,6 +281,18 @@ Default OCR configuration: `--oem 3 --psm 6`
 - **Default DPI**: 300 for PDF conversion
 - **Target Width**: 2480 pixels for normalization
 - **Processing**: Adaptive thresholding, Gaussian blur for noise reduction
+
+### Scanner Configuration
+- **Default DPI**: 300 for scanning
+- **Color Modes**: color, gray, lineart
+- **Supported Platforms**: Linux (SANE), Windows (WIA), macOS (SANE)
+- **Multi-page Support**: Automatic Document Feeder (ADF) support
+
+### Overlay Configuration
+- **Font Sizes**: Configurable per field
+- **Text Colors**: Customizable overlay colors
+- **Alignment**: Left, center, right text alignment
+- **Confidence Threshold**: Minimum OCR confidence for overlay (default: 30%)
 
 ## 📄 Output Files
 
