@@ -1,0 +1,146 @@
+{
+  "property_owner_name": {
+    "text": ".",
+    "confidence": 57.0,
+    "field_name": "property_owner_name",
+    "coordinates": {
+      "x": 150,
+      "y": 120,
+      "width": 280,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "property_id": {
+    "text": "R e",
+    "confidence": 18.0,
+    "field_name": "property_id",
+    "coordinates": {
+      "x": 450,
+      "y": 120,
+      "width": 150,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  },
+  "property_address": {
+    "text": "- - A - g e e",
+    "confidence": 26.857142857142858,
+    "field_name": "property_address",
+    "coordinates": {
+      "x": 150,
+      "y": 170,
+      "width": 400,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 6"
+  },
+  "district": {
+    "text": "",
+    "confidence": 0.0,
+    "field_name": "district",
+    "coordinates": {
+      "x": 150,
+      "y": 220,
+      "width": 180,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "tehsil": {
+    "text": "",
+    "confidence": 0.0,
+    "field_name": "tehsil",
+    "coordinates": {
+      "x": 350,
+      "y": 220,
+      "width": 180,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "village": {
+    "text": "",
+    "confidence": 0.0,
+    "field_name": "village",
+    "coordinates": {
+      "x": 150,
+      "y": 270,
+      "width": 200,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 7"
+  },
+  "survey_number": {
+    "text": "e S e",
+    "confidence": 24.0,
+    "field_name": "survey_number",
+    "coordinates": {
+      "x": 380,
+      "y": 270,
+      "width": 150,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  },
+  "area_acres": {
+    "text": "",
+    "confidence": 0.0,
+    "field_name": "area_acres",
+    "coordinates": {
+      "x": 200,
+      "y": 350,
+      "width": 100,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 6"
+  },
+  "area_guntha": {
+    "text": "",
+    "confidence": 0.0,
+    "field_name": "area_guntha",
+    "coordinates": {
+      "x": 320,
+      "y": 350,
+      "width": 100,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 6"
+  },
+  "assessed_value": {
+    "text": "T ey Sl",
+    "confidence": 14.666666666666666,
+    "field_name": "assessed_value",
+    "coordinates": {
+      "x": 400,
+      "y": 400,
+      "width": 130,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 6"
+  },
+  "tax_amount": {
+    "text": "e",
+    "confidence": 22.0,
+    "field_name": "tax_amount",
+    "coordinates": {
+      "x": 400,
+      "y": 450,
+      "width": 130,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 6"
+  },
+  "financial_year": {
+    "text": "oL",
+    "confidence": 14.0,
+    "field_name": "financial_year",
+    "coordinates": {
+      "x": 480,
+      "y": 80,
+      "width": 100,
+      "height": 25
+    },
+    "ocr_config": "--oem 3 --psm 8"
+  }
+}

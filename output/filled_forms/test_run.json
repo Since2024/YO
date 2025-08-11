@@ -1,7 +1,7 @@
 {
   "business_name": {
-    "text": "—_ . - .",
-    "confidence": 45.0,
+    "text": "",
+    "confidence": 0.0,
     "field_name": "business_name",
     "coordinates": {
       "x": 120,
@@ -12,8 +12,8 @@
     "ocr_config": "--oem 3 --psm 7"
   },
   "tax_id": {
-    "text": "S",
-    "confidence": 6.0,
+    "text": "R",
+    "confidence": 14.0,
     "field_name": "tax_id",
     "coordinates": {
       "x": 450,
@@ -60,8 +60,8 @@
     "ocr_config": "--oem 3 --psm 6"
   },
   "total_expenses": {
-    "text": "",
-    "confidence": 0.0,
+    "text": "e Y2",
+    "confidence": 22.5,
     "field_name": "total_expenses",
     "coordinates": {
       "x": 400,
@@ -72,8 +72,8 @@
     "ocr_config": "--oem 3 --psm 6"
   },
   "net_income": {
-    "text": "",
-    "confidence": 0.0,
+    "text": "gl e — ™ AT",
+    "confidence": 22.0,
     "field_name": "net_income",
     "coordinates": {
       "x": 400,
@@ -84,8 +84,8 @@
     "ocr_config": "--oem 3 --psm 6"
   },
   "tax_year": {
-    "text": "EFORI",
-    "confidence": 3.0,
+    "text": "g e",
+    "confidence": 32.0,
     "field_name": "tax_year",
     "coordinates": {
       "x": 500,
