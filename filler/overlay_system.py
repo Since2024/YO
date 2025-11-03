@@ -6,8 +6,6 @@ physical form templates. Supports both digital and physical form processing.
 """
 
 import os
-import cv2
-import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont

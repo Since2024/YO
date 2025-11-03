@@ -8,7 +8,6 @@ field positions and OCR parameters for form filling.
 import json
 import os
 from typing import Dict, Any, List
-from pathlib import Path
 
 
 class TemplateValidationError(Exception):

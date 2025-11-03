@@ -12,7 +12,6 @@ This script initializes the SmartForm database with:
 import os
 import sys
 import json
-from datetime import datetime
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
