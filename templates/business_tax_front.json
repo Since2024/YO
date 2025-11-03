@@ -1,0 +1,354 @@
+{
+	"forms": [
+		{
+			"name": "व्यवसाय कर फारम",
+			"form_type": "Business Tax Form",
+			"description": "Template for digitizing व्यवसाय कर फारम with OCR + Auto Fill",
+			"version": "1.1",
+			"source": "FirstChild Project - Since2024",
+			"metadata": {
+				"image_filename": "business_front.jpg",
+				"paper_size_mm": {
+					"width": 210,
+					"height": 297
+				},
+				"pixel_to_mm": 0.248,
+				"image_dimensions_px": {
+					"width": 847,
+					"height": 1197
+				}
+			},
+			"fields": [
+				{
+					"id": "f001",
+					"name": "आन्तरिक संकेत नं",
+					"label": "Economic Indicator Number",
+					"type": "box_grid",
+					"page": 1,
+					"bbox": {
+					"px": [60, 65, 170, 55],
+					"mm": [14.8, 16.1, 42.2, 13.6]
+					},
+					"grid": {
+						"boxes": 5,
+						"spacing": 28.3,
+						"box_width": 26
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 8
+					},
+					"validate": {
+						"req": true,
+						"type": "number",
+						"len": 5
+					},
+					"conf": 0.95
+				},
+				{
+					"id": "f002",
+					"name": "वडा कार्यालय",
+					"label": "Ward Office",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [42, 265, 230, 25],
+						"mm": [10.4, 65.7, 57.0, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"desc": "वडा कार्यालय field",
+					"conf": 0.9
+				},
+				{
+					"id": "f003",
+					"name": "व्यवसायको नाम",
+					"label": "Business Name",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [220, 558, 585, 25],
+						"mm": [54.6, 138.4, 145.1, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 2
+					},
+					"desc": "Official registered business name",
+					"conf": 0.95
+				},
+				{
+					"id": "f004",
+					"name": "स्थानीय दर्ता नं",
+					"label": "Local Registration Number",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [245, 610, 560, 25],
+						"mm": [60.8, 151.3, 138.9, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 1
+					},
+					"desc": "स्थानीय दर्ता नं field for local registration reference",
+					"conf": 0.95
+				},
+				{
+					"id": "f005",
+					"name": "दर्ता मिति",
+					"label": "Registration Date",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [190, 662, 615, 25],
+						"mm": [47.1, 164.2, 152.5, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "date",
+						"format": "YYYY-MM-DD"
+					},
+					"desc": "Official registration date of the business",
+					"conf": 0.95
+				},
+				{
+					"id": "f006",
+					"name": "व्यवसाय सञ्चालन मिति",
+					"label": "Business Operation Date",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [280, 713, 525, 25],
+						"mm": [69.4, 176.8, 130.2, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "date",
+						"format": "YYYY-MM-DD"
+					},
+					"desc": "Date when the business officially started operations",
+					"conf": 0.95
+				},
+				{
+					"id": "f007",
+					"name": "सञ्चालकको नाम",
+					"label": "Owner/Operator Name",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [235, 765, 570, 25],
+						"mm": [58.3, 189.7, 141.4, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 2
+					},
+					"desc": "Full name of the business owner or operator",
+					"conf": 0.95
+				},
+				{
+					"id": "f008",
+					"name": "राष्ट्रिय परिचय पत्र नं",
+					"label": "National ID Number",
+					"type": "box_grid",
+					"page": 1,
+					"bbox": {
+						"px": [285, 803, 280, 40],
+						"mm": [70.7, 199.1, 69.4, 9.9]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 8
+					},
+					"validate": {
+						"req": true,
+						"type": "number",
+						"len": 9
+					},
+					"desc": "National Identity Card Number field (box grid)",
+					"conf": 0.95
+				},
+				{
+					"id": "f009",
+					"name": "व्यवसायको किसिम",
+					"label": "Business Type",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [250, 860, 555, 25],
+						"mm": [62.0, 213.3, 137.6, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 2
+					},
+					"desc": "Business type",
+					"conf": 0.95
+				},
+				{
+					"id": "f010",
+					"name": "व्यवसायको ठेगाना",
+					"label": "Business Address",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [255, 912, 550, 25],
+						"mm": [63.2, 226.2, 136.4, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 2
+					},
+					"desc": "व्यवसायको ठेगाना field",
+					"conf": 0.95
+				},
+				{
+					"id": "f011",
+					"name": "पथ/टोलको नाम",
+					"label": "Street/Lane Name",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [240, 964, 565, 25],
+						"mm": [59.5, 239.1, 140.1, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 2
+					},
+					"desc": "पथ/टोलको नाम field",
+					"conf": 0.95
+				},
+				{
+					"id": "f012",
+					"name": "कुल पूँजी",
+					"label": "Total Capital",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [200, 1016, 605, 25],
+						"mm": [49.6, 252.0, 150.0, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": true,
+						"type": "string",
+						"min_len": 1
+					},
+					"desc": "कुल पूँजी field",
+					"conf": 0.95
+				},
+				{
+					"id": "f013",
+					"name": "व्यवसायको पान नं",
+					"label": "Business PAN Number",
+					"type": "box_grid",
+					"page": 1,
+					"bbox": {
+						"px": [245, 1052, 340, 90],
+						"mm": [60.8, 260.9, 84.3, 22.3]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 8
+					},
+					"validate": {
+						"req": true,
+						"type": "number",
+						"len": 9
+					},
+					"desc": "व्यवसायको पान नं field",
+					"conf": 0.95
+				},
+				{
+					"id": "f014",
+					"name": "ई-मेल",
+					"label": "Email Address",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [170, 1172, 635, 25],
+						"mm": [42.2, 290.7, 157.5, 6.2]
+					},
+					"ocr": {
+						"lang": "nep+eng",
+						"psm": 7
+					},
+					"validate": {
+						"req": false,
+						"type": "email",
+						"pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+					},
+					"desc": "ई-मेल field for contact information",
+					"conf": 0.95
+				},
+				{
+					"id": "f016",
+					"name": "अन्य निकायमा दर्ता भएको कार्यालयको नाम",
+					"label": "Registered Office Name in Other Authority",
+					"type": "text_line",
+					"page": 1,
+					"bbox": {
+						"px": [380, 1224, 425, 25],
+						"mm": [94.2, 303.6, 105.4, 6.2]
+					},
+					"ocr": {
+						"lang": "nep",
+						"psm": 7
+					},
+					"validate": {
+						"req": false,
+						"type": "string",
+						"min_len": 2
+					},
+					"desc": "अन्य निकायमा दर्ता भएको कार्यालयको नाम field",
+					"conf": 0.95
+				}
+			]
+		}
+	]
+}
