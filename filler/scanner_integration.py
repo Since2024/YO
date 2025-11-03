@@ -10,7 +10,6 @@ import subprocess
 import tempfile
 from typing import List, Optional, Dict, Any
 from pathlib import Path
-from PIL import Image
 import time
 
 try:

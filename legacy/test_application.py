@@ -66,7 +66,6 @@ def test_ocr_system():
     """Test the OCR system components individually"""
     from filler.ocr import OCRExtractor
     from filler.template_loader import TemplateLoader
-    from filler.preprocess import PreprocessorService
     
     print("🧪 Testing OCR System Components...")
     

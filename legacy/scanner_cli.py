@@ -8,9 +8,7 @@ Provides comprehensive scanner management and overlay processing capabilities.
 
 import argparse
 import sys
-import os
 import json
-from pathlib import Path
 from typing import Optional, Dict, Any
 
 from filler.scanner_integration import ScannerService

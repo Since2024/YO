@@ -7,9 +7,6 @@ Shows how to scan physical documents and overlay extracted data onto forms.
 """
 
 import os
-import sys
-import json
-from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from filler.scanner_integration import ScannerService

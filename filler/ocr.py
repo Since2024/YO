@@ -11,7 +11,6 @@ import numpy as np
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
 import pytesseract
-from pathlib import Path
 
 
 class OCRExtractor:
