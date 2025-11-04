@@ -36,8 +36,7 @@ class OCRExtractor:
             self.ocr = PaddleOCR(
                 use_angle_cls=True,
                 lang='en',  # Primary language
-                use_gpu=use_gpu,
-                show_log=debug
+                use_gpu=use_gpu
             )
             logger.info("PaddleOCR initialized successfully")
         except Exception as e:
