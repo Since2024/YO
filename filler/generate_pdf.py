@@ -7,12 +7,8 @@ positioning based on template coordinates.
 
 import os
 from typing import Dict, Any
-from pathlib import Path
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.units import inch, mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.colors import black
 
 

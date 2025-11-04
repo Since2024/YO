@@ -6,7 +6,7 @@ Handles database initialization, connection management, and session handling.
 
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 

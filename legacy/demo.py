@@ -6,7 +6,6 @@ Shows all features and creates demonstration outputs
 
 import os
 import json
-from pathlib import Path
 
 def show_project_structure():
     """Display the project structure"""
