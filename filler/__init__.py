@@ -1,8 +1,5 @@
-"""
-FirstChild Filler Package
+"""Form filling package."""
 
-OCR-based PDF form filling components.
-"""
+from .form_filler import FormFiller
 
-__version__ = "1.0.0"
-__author__ = "FirstChild Team"
+__all__ = ['FormFiller']
