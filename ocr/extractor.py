@@ -33,11 +33,16 @@ class OCRExtractor:
         try:
             # Initialize PaddleOCR
             # For multi-language, we'll use 'en' as primary and handle Devanagari
-            self.ocr = PaddleOCR(
-                use_angle_cls=True,
-                lang='en',  # Primary language
-                use_gpu=use_gpu
-            )
+            ocr_params = {
+                'use_angle_cls': True,
+                'lang': 'en'  # Primary language
+            }
+            
+            # Add GPU parameter only if True (to avoid issues with older versions)
+            if use_gpu:
+                ocr_params['use_gpu'] = True
+            
+            self.ocr = PaddleOCR(**ocr_params)
             logger.info("PaddleOCR initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize PaddleOCR: {e}")
