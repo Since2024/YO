@@ -1,373 +1,399 @@
-# FirstChild - OCR-based PDF Form Filling Tool
+# Auto Form Fill - OCR-based PDF Form Filling Tool
 
-FirstChild is a comprehensive Python CLI application designed for automated form filling using OCR (Optical Character Recognition) technology. It extracts data from scanned documents and fills official PDF forms with pixel-perfect positioning.
+[![Status](https://img.shields.io/badge/status-MVP-green)]()
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
+
+A comprehensive Python CLI application designed for automated form filling using PaddleOCR technology. Extracts data from scanned documents and fills official PDF forms for Nepali government forms (Business Tax, Land/Sampati Tax).
 
 ## 🎯 Project Overview
 
-The application is specifically designed for automating form filling for fixed-format business tax and land/property tax forms where scanned data must be mapped to specific positions on official form PDFs.
+This MVP application automates the complete pipeline for form filling:
+- **Input**: Scanned form images (JPG/PNG)
+- **OCR**: Multi-language text extraction (English + Devanagari)
+- **Extraction**: Structured field-based data extraction
+- **Validation**: Field validation against templates
+- **Storage**: MySQL database for form history
+- **Output**: Filled PDF forms
 
 ## 🛠️ Tech Stack
 
-- **Language**: Python 3.11+
-- **OCR Engine**: pytesseract with custom configuration
-- **PDF Generation**: ReportLab for pixel-perfect positioning
-- **Image Processing**: OpenCV, Pillow, pdf2image
-- **Template Format**: JSON schema with exact coordinates
+- **Language**: Python 3.8+
+- **OCR Engine**: PaddleOCR (English + Devanagari support)
+- **PDF Generation**: ReportLab + OpenCV/PIL
+- **Image Processing**: OpenCV, Pillow
+- **Database**: MySQL with pymysql
+- **Configuration**: python-dotenv
 
 ## 📁 Project Structure
 
 ```
-FirstChild/
-├── main.py                  # CLI entry point
-├── filler/                  # Core processing modules
+/app/
+├── main.py                    # CLI orchestrator
+├── requirements.txt           # Python dependencies
+├── .env.example              # Environment variable template
+├── run_demo.sh               # Demo script
+│
+├── ocr/                      # OCR processing
 │   ├── __init__.py
-│   ├── ocr.py              # OCR extraction logic
-│   ├── generate_pdf.py     # ReportLab PDF generator
-│   ├── preprocess.py       # Image/PDF preprocessing
-│   └── template_loader.py  # JSON template loader & validator
-├── templates/              # Form templates
-│   ├── business_tax.json
-│   └── land_tax.json
-├── input/
-│   └── samples/            # Sample input files
-├── output/
-│   └── filled_forms/       # Generated filled PDFs
-├── requirements.txt
-└── README.md
+│   └── extractor.py          # PaddleOCR implementation
+│
+├── filler/                   # Form filling logic
+│   ├── __init__.py
+│   └── form_filler.py        # Template mapping & validation
+│
+├── printer/                  # PDF export utilities
+│   ├── __init__.py
+│   └── pdf_generator.py      # ReportLab PDF generation
+│
+├── db/                       # Database layer
+│   ├── __init__.py
+│   ├── connection.py         # MySQL connection utils
+│   └── models.py             # Database models (CRUD operations)
+│
+├── utils/                    # Utilities
+│   ├── __init__.py
+│   └── logger.py             # Logging configuration
+│
+├── templates/                # JSON templates
+│   ├── business_tax_front.json
+│   ├── business_tax_back.json
+│   ├── sampati_tax_page1_front.json
+│   ├── sampati_tax_page2_back.json
+│   ├── business_front.jpg
+│   ├── business_back.jpg
+│   ├── sampati_front.jpg
+│   └── sampati_last.jpg
+│
+├── data/
+│   ├── input/                # Raw form images
+│   └── output/               # Generated results
+│
+├── logs/                     # Application logs
+│   └── app_*.log
+│
+└── tests/                    # Test suite
+    ├── __init__.py
+    └── smoke_test.py         # End-to-end smoke tests
 ```
 
 ## 🚀 Installation
 
 ### Prerequisites
 
-1. **Python 3.11+** - Download from [python.org](https://python.org)
-
-2. **Tesseract OCR** - Required for text extraction
+1. **Python 3.8+**
    ```bash
-   # Ubuntu/Debian
-   sudo apt-get install tesseract-ocr
-   
-   # macOS
-   brew install tesseract
-   
-   # Windows
-   # Download from: https://github.com/UB-Mannheim/tesseract/wiki
+   python3 --version
    ```
 
-3. **Poppler** (for PDF processing)
+2. **MySQL Server**
    ```bash
-   # Ubuntu/Debian  
-   sudo apt-get install poppler-utils
+   # Ubuntu/Debian
+   sudo apt-get install mysql-server
    
    # macOS
-   brew install poppler
+   brew install mysql
    
-   # Windows
-   # Download from: http://blog.alivate.com.au/poppler-windows/
+   # Start MySQL
+   sudo systemctl start mysql  # Linux
+   brew services start mysql   # macOS
    ```
 
 ### Setup
 
-1. **Clone or extract the project**:
+1. **Clone the repository**:
    ```bash
-   cd FirstChild/
+   cd /app
    ```
 
-2. **Install Python dependencies**:
+2. **Create virtual environment**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # Linux/macOS
+   # or
+   venv\Scripts\activate  # Windows
+   ```
+
+3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Verify installation**:
+4. **Configure environment**:
    ```bash
-   python main.py --help
+   cp .env.example .env
+   # Edit .env with your MySQL credentials
+   nano .env
    ```
 
-## 📝 Template Format
+5. **Initialize database**:
+   The database and tables will be created automatically on first run.
 
-Templates are JSON files that define field positions and OCR parameters:
+## 📝 Configuration (.env)
 
-```json
-{
-  "name": "Form Template Name",
-  "description": "Template description",
-  "version": "1.0",
-  "fields": [
-    {
-      "name": "field_name",
-      "x": 150,                 # X coordinate in points
-      "y": 200,                 # Y coordinate in points  
-      "width": 300,             # Field width in points
-      "height": 25,             # Field height in points
-      "page": 1,                # Page number (1-indexed)
-      "ocr_psm": 7,            # OCR Page Segmentation Mode
-      "description": "Field description"
-    }
-  ]
-}
+```env
+# MySQL Database Configuration
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DB=auto_form_fill
+
+# Application Configuration
+DEBUG=True
+LOG_LEVEL=INFO
+
+# Paths
+TEMPLATES_DIR=/app/templates
+DATA_INPUT_DIR=/app/data/input
+DATA_OUTPUT_DIR=/app/data/output
+LOGS_DIR=/app/logs
+
+# OCR Configuration
+OCR_LANGUAGES=en,hi
+OCR_USE_GPU=False
 ```
-
-### Coordinate System
-- **Origin**: Top-left corner (0,0)
-- **Units**: Points (1 point = 1/72 inch)
-- **X-axis**: Left to right
-- **Y-axis**: Top to bottom
-
-### OCR PSM Modes
-- `6`: Uniform block of text (default)
-- `7`: Single text line  
-- `8`: Single word
-- `9`: Single character
-- `10`: Single character, circled
 
 ## 🖥️ Usage
 
-### Scanner and Overlay CLI Tool
-
-The application includes a dedicated CLI tool for scanner and overlay operations:
+### Basic Command
 
 ```bash
-python scanner_cli.py <command> [options]
+python main.py --image <input_image> --template <template_json> --output <output_pdf>
 ```
-
-#### Available Commands
-
-**Scanner Operations:**
-- `list-scanners` - List available scanners
-- `test-scanner` - Test scanner functionality
-- `scan` - Scan physical documents
-
-**Overlay Operations:**
-- `list-overlays` - List available overlay templates
-- `create-overlay` - Create new overlay template
-- `overlay` - Create overlay on form
-- `scan-overlay` - Scan and overlay in one operation
-
-#### Examples
-
-1. **List available scanners**:
-   ```bash
-   python scanner_cli.py list-scanners
-   ```
-
-2. **Test scanner functionality**:
-   ```bash
-   python scanner_cli.py test-scanner --scanner "HP LaserJet"
-   ```
-
-3. **Scan a document**:
-   ```bash
-   python scanner_cli.py scan --output scanned_document.png --dpi 300
-   ```
-
-4. **Scan multiple pages**:
-   ```bash
-   python scanner_cli.py scan --multi-page --output scanned_pages/
-   ```
-
-5. **Create overlay on form**:
-   ```bash
-   python scanner_cli.py overlay \
-     --input form.png \
-     --template templates/business_tax.json \
-     --overlay-template business_tax_overlay \
-     --output filled_form.png
-   ```
-
-6. **Scan and overlay in one operation**:
-   ```bash
-   python scanner_cli.py scan-overlay \
-     --template templates/business_tax.json \
-     --overlay-template business_tax_overlay \
-     --output final_form.png
-   ```
-
-### Basic Command Structure
-```bash
-python main.py --input <input_file> --template <template_file> --output <output_file>
-```
-
-### Examples
-
-1. **Process a business tax form**:
-   ```bash
-   python main.py \
-     --input input/samples/business_tax_scan.pdf \
-     --template templates/business_tax.json \
-     --output output/filled_forms/business_tax_filled.pdf
-   ```
-
-2. **Process a land tax form with debug mode**:
-   ```bash
-   python main.py \
-     --input input/samples/land_tax_scan.jpg \
-     --template templates/land_tax.json \
-     --output output/filled_forms/land_tax_filled.pdf \
-     --debug
-   ```
-
-3. **Process with Hindi OCR**:
-   ```bash
-   python main.py \
-     --input input/samples/hindi_form.pdf \
-     --template templates/business_tax.json \
-     --output output/filled_forms/hindi_filled.pdf \
-     --lang hin
-   ```
-
-4. **Scan physical document and process**:
-   ```bash
-   python main.py \
-     --scan \
-     --template templates/business_tax.json \
-     --output output/filled_forms/scanned_form.pdf
-   ```
-
-5. **Create overlay on physical form**:
-   ```bash
-   python main.py \
-     --scan \
-     --overlay \
-     --overlay-template business_tax_overlay \
-     --template templates/business_tax.json \
-     --output output/overlayed/overlayed_form.png
-   ```
 
 ### Command Line Options
 
 | Option | Short | Required | Description |
-|--------|--------|----------|-------------|
-| `--input` | `-i` | Yes* | Path to input PDF or image file (*not required with --scan) |
+|--------|-------|----------|-------------|
+| `--image` | `-i` | Yes | Path to input form image (JPG/PNG) |
 | `--template` | `-t` | Yes | Path to JSON template file |
 | `--output` | `-o` | Yes | Path for output filled PDF |
-| `--lang` | `-l` | No | OCR language code (default: eng) |
-| `--debug` | `-d` | No | Enable debug mode with detailed logging |
-| `--scan` | `-s` | No | Use scanner to scan physical document |
-| `--scanner` | `-sc` | No | Specify scanner device name |
-| `--overlay` | `-o` | No | Use overlay template for physical form processing |
-| `--overlay-template` | `-ot` | No | Specify overlay template name |
+| `--data` | | No | Path to save extracted data JSON |
+| `--languages` | `-l` | No | OCR languages (default: en,hi) |
+| `--debug` | `-d` | No | Enable debug mode |
+| `--no-db` | | No | Skip database storage |
+
+### Examples
+
+1. **Business Tax Form (Front)**:
+   ```bash
+   python main.py \
+     --image templates/business_front.jpg \
+     --template templates/business_tax_front.json \
+     --output data/output/business_filled.pdf \
+     --debug
+   ```
+
+2. **Sampati/Land Tax Form (Front)**:
+   ```bash
+   python main.py \
+     --image templates/sampati_front.jpg \
+     --template templates/sampati_tax_page1_front.json \
+     --output data/output/sampati_filled.pdf
+   ```
+
+3. **With custom data output**:
+   ```bash
+   python main.py \
+     --image templates/business_front.jpg \
+     --template templates/business_tax_front.json \
+     --output data/output/filled.pdf \
+     --data data/output/extracted.json
+   ```
+
+## 🎬 Run Demo
+
+Run the automated demo script to test both forms:
+
+```bash
+chmod +x run_demo.sh
+./run_demo.sh
+```
+
+This will process:
+- Business Tax Form (Front)
+- Sampati/Land Tax Form (Front)
+
+Output files will be saved in `data/output/`
 
 ## 📊 System Workflow
 
-### Standard Processing
-1. **Input Processing**: Convert PDFs to images, normalize resolution
-2. **Template Loading**: Load and validate JSON template
-3. **OCR Extraction**: Extract text from defined field regions
-4. **Confidence Analysis**: Calculate OCR confidence scores
-5. **PDF Generation**: Create filled PDF with extracted data
-6. **Output**: Save filled PDF and extraction results (JSON)
+```
+┌─────────────────┐
+│  Input Image    │
+│   (JPG/PNG)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Preprocessing  │
+│  (OpenCV)       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  OCR Extract    │
+│  (PaddleOCR)    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Template Match  │
+│  (Field Map)    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Validation    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Save to MySQL  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Generate PDF   │
+│  (ReportLab)    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Output PDF +   │
+│  JSON Data      │
+└─────────────────┘
+```
 
-### Scanner Integration
-1. **Scanner Detection**: Automatically detect available scanners
-2. **Document Scanning**: Scan physical documents using printer/scanner hardware
-3. **Image Processing**: Normalize scanned images for OCR
-4. **OCR Extraction**: Extract text from scanned documents
-5. **Output Generation**: Create filled PDF or overlay on physical form
+## 🧪 Testing
 
-### Overlay System
-1. **Form Scanning**: Scan physical form templates
-2. **Data Extraction**: Extract data using OCR from source documents
-3. **Overlay Processing**: Overlay extracted data onto form templates
-4. **Form Generation**: Create filled physical forms with overlaid data
+### Run Smoke Tests
 
-## 🔧 Configuration
+```bash
+python tests/smoke_test.py
+```
 
-### OCR Configuration
-Default OCR configuration: `--oem 3 --psm 6`
-- **OEM 3**: LSTM OCR engine
-- **PSM 6**: Uniform block of text
+Tests include:
+- Database connection
+- OCR initialization
+- Template loading
+- End-to-end pipeline
 
-### Image Processing
-- **Default DPI**: 300 for PDF conversion
-- **Target Width**: 2480 pixels for normalization
-- **Processing**: Adaptive thresholding, Gaussian blur for noise reduction
+## 📄 Template Format
 
-### Scanner Configuration
-- **Default DPI**: 300 for scanning
-- **Color Modes**: color, gray, lineart
-- **Supported Platforms**: Linux (SANE), Windows (WIA), macOS (SANE)
-- **Multi-page Support**: Automatic Document Feeder (ADF) support
+Templates are JSON files defining field positions and OCR parameters:
 
-### Overlay Configuration
-- **Font Sizes**: Configurable per field
-- **Text Colors**: Customizable overlay colors
-- **Alignment**: Left, center, right text alignment
-- **Confidence Threshold**: Minimum OCR confidence for overlay (default: 30%)
-
-## 📄 Output Files
-
-The application generates two types of output:
-
-1. **Filled PDF** (`output_path`): The final filled form
-2. **Extraction Results** (`output_path.json`): OCR data for auditing
-
-### Extraction Results Format
 ```json
 {
-  "field_name": {
-    "text": "Extracted Text",
-    "confidence": 95.2,
-    "coordinates": {"x": 150, "y": 200, "width": 300, "height": 25},
-    "ocr_config": "--oem 3 --psm 7"
-  }
+  "forms": [{
+    "name": "Form Name",
+    "form_type": "business_tax",
+    "fields": [
+      {
+        "id": "f001",
+        "name": "field_name",
+        "label": "Field Label",
+        "type": "text_line",
+        "page": 1,
+        "bbox": {
+          "px": [x, y, width, height],
+          "mm": [x_mm, y_mm, width_mm, height_mm]
+        },
+        "ocr": {
+          "lang": "nep",
+          "psm": 7
+        },
+        "validate": {
+          "req": true,
+          "type": "string",
+          "min_len": 2
+        }
+      }
+    ]
+  }]
 }
 ```
 
-## 🐛 Troubleshooting
+## 🗄️ Database Schema
+
+### Tables
+
+1. **form_templates**: Template definitions
+2. **form_processings**: Processing history
+3. **extracted_data**: OCR extracted field data
+
+### CRUD Operations
+
+```python
+from db import FormTemplate, FormProcessing, ExtractedData
+
+# Create template
+template_id = FormTemplate.create(name, form_type, path, fields_json)
+
+# Create processing
+processing_id = FormProcessing.create(template_id, input_file)
+
+# Save extracted data
+ExtractedData.bulk_create(processing_id, data_list)
+
+# Query
+processings = FormProcessing.get_all(limit=50)
+data = ExtractedData.get_by_processing_id(processing_id)
+```
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-1. **Tesseract not found**:
-   - Ensure Tesseract is installed and in PATH
-   - On Windows, add Tesseract installation directory to PATH
+1. **PaddleOCR initialization fails**:
+   - Ensure numpy version compatibility
+   - Try: `pip install paddleocr --upgrade`
 
-2. **PDF conversion fails**:
-   - Install poppler-utils (Linux) or poppler (macOS)
-   - On Windows, ensure poppler binaries are in PATH
+2. **MySQL connection error**:
+   - Check MySQL is running: `sudo systemctl status mysql`
+   - Verify credentials in `.env`
+   - Ensure database exists or will be created
 
 3. **Low OCR accuracy**:
-   - Adjust `ocr_psm` values in template
-   - Ensure input images are high resolution (300+ DPI)
-   - Check field coordinates match actual form layout
+   - Ensure input image is high resolution (300+ DPI)
+   - Check template bbox coordinates match the form
+   - Enable debug mode to inspect cropped regions
 
-4. **Memory issues with large PDFs**:
-   - Reduce DPI in preprocessing (default: 300)
-   - Process pages individually for very large documents
+4. **Missing dependencies**:
+   ```bash
+   pip install -r requirements.txt --force-reinstall
+   ```
 
-### Debug Mode
+## 📈 Performance Tips
 
-Enable debug mode with `--debug` flag to:
-- View detailed processing logs
-- Save cropped field images for inspection
-- Display OCR confidence scores
-- Get full error traceback
+- **Image Quality**: Use 300+ DPI scans for best results
+- **Preprocessing**: Images are automatically preprocessed (grayscale, denoise, threshold)
+- **GPU Acceleration**: Set `OCR_USE_GPU=True` in `.env` if CUDA available
+- **Batch Processing**: Process multiple forms by scripting main.py calls
 
-## 📖 Template Creation Guide
+## 🚀 Future Enhancements
 
-1. **Get a sample form**: Scan or obtain digital copy of the form
-2. **Identify field positions**: Use image editor to find coordinates
-3. **Create template JSON**: Define fields with exact coordinates
-4. **Test and refine**: Run extraction and adjust coordinates as needed
-5. **Optimize OCR settings**: Adjust `ocr_psm` values for better accuracy
+- [ ] Web API (Flask/FastAPI) for remote form submission
+- [ ] Automatic template generation from form images
+- [ ] Multi-page PDF support
+- [ ] Template versioning
+- [ ] Dashboard for result visualization
+- [ ] Firebase backup integration
+- [ ] Advanced validation rules
 
-### Tips for Better Templates
-- Use higher DPI scans (300+) for coordinate accuracy
-- Ensure field dimensions are slightly larger than text areas
-- Test with multiple sample documents
-- Use appropriate OCR PSM modes for different field types
+## 📝 Logging
 
-## 🔍 Performance Optimization
+Logs are saved to `logs/app_YYYYMMDD.log` with the following levels:
+- **DEBUG**: Detailed processing information
+- **INFO**: General progress updates
+- **WARNING**: Non-critical issues
+- **ERROR**: Critical failures
 
-- **Image Resolution**: Higher DPI improves OCR accuracy but increases processing time
-- **Field Size**: Slightly oversized field regions improve text capture
-- **OCR PSM**: Use specific PSM modes for different text types:
-  - PSM 7 for single lines
-  - PSM 8 for single words  
-  - PSM 6 for paragraphs
-
-## 📜 License
-
-This project is provided for educational and development purposes. Please ensure compliance with applicable laws and regulations when processing official documents.
+View logs:
+```bash
+tail -f logs/app_$(date +%Y%m%d).log
+```
 
 ## 🤝 Contributing
 
@@ -382,9 +408,9 @@ This project is provided for educational and development purposes. Please ensure
 For issues and questions:
 1. Check the troubleshooting section
 2. Enable debug mode for detailed error information
-3. Review template format and coordinate system
-4. Ensure all dependencies are properly installed
+3. Review logs in `logs/` directory
+4. Check template format and coordinates
 
 ---
 
-**FirstChild** - Automating form filling with precision and efficiency.
+**Auto Form Fill** - Automating Nepali government form filling with precision and efficiency.

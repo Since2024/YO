@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
 """
-FirstChild: OCR-based PDF Form Filling CLI Application
+Auto Form Fill - OCR-based PDF Form Filling CLI Application
 
-A comprehensive tool for automated form filling using OCR technology.
-Extracts data from scanned documents and fills official PDF forms.
+A comprehensive tool for automated form filling using PaddleOCR technology.
+Extracts data from scanned documents and fills official PDF forms for 
+Nepali government forms (Business Tax, Land/Sampati Tax).
 """
 
 import argparse
 import sys
 import os
-import json
+import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional
+from dotenv import load_dotenv
 
-from filler.preprocess import PreprocessorService
-from filler.template_loader import TemplateLoader
-from filler.ocr import OCRExtractor
-from filler.generate_pdf import PDFGenerator
-from filler.scanner_integration import ScannerService
-from filler.overlay_system import OverlayService
+# Load environment variables
+load_dotenv()
+
+# Import modules
+from utils.logger import setup_logger
+from ocr.extractor import OCRExtractor
+from filler.form_filler import FormFiller
+from printer.pdf_generator import PDFGenerator
+from db import init_database, FormTemplate, FormProcessing, ExtractedData
+
+# Setup logger
+logger = setup_logger()
 
 
 def setup_arguments() -> argparse.ArgumentParser:
@@ -29,22 +37,22 @@ def setup_arguments() -> argparse.ArgumentParser:
         argparse.ArgumentParser: Configured argument parser
     """
     parser = argparse.ArgumentParser(
-        description="FirstChild: OCR-based PDF Form Filling Tool",
-        epilog="Example: python main.py --input sample.pdf --template templates/business_tax.json --output filled_form.pdf"
+        description="Auto Form Fill: OCR-based PDF Form Filling Tool for Nepali Government Forms",
+        epilog="Example: python main.py --image business_front.jpg --template templates/business_tax_front.json --output filled_form.pdf"
     )
     
     parser.add_argument(
-        "--input", "-i",
+        "--image", "-i",
         required=True,
         type=str,
-        help="Path to input PDF or image file"
+        help="Path to input form image (JPG/PNG)"
     )
     
     parser.add_argument(
         "--template", "-t",
         required=True,
         type=str,
-        help="Path to JSON template file"
+        help="Path to JSON template file defining form fields"
     )
     
     parser.add_argument(
@@ -55,10 +63,9 @@ def setup_arguments() -> argparse.ArgumentParser:
     )
     
     parser.add_argument(
-        "--lang", "-l",
-        default="eng",
+        "--data",
         type=str,
-        help="OCR language code (default: eng)"
+        help="Path to save extracted data JSON (optional)"
     )
     
     parser.add_argument(
@@ -68,27 +75,16 @@ def setup_arguments() -> argparse.ArgumentParser:
     )
     
     parser.add_argument(
-        "--scan", "-s",
+        "--no-db",
         action="store_true",
-        help="Use scanner to scan physical document"
+        help="Skip database storage"
     )
     
     parser.add_argument(
-        "--scanner", "-sc",
+        "--languages", "-l",
+        default="en,hi",
         type=str,
-        help="Specify scanner device name"
-    )
-    
-    parser.add_argument(
-        "--overlay", "-o",
-        type=str,
-        help="Use overlay template for physical form processing"
-    )
-    
-    parser.add_argument(
-        "--overlay-template", "-ot",
-        type=str,
-        help="Specify overlay template name"
+        help="OCR languages (comma-separated, e.g., 'en,hi' for English and Devanagari)"
     )
     
     return parser
@@ -104,25 +100,25 @@ def validate_inputs(args: argparse.Namespace) -> bool:
     Returns:
         bool: True if all validations pass
     """
-    # Check input file exists
-    if not os.path.exists(args.input):
-        print(f"❌ Error: Input file '{args.input}' not found")
+    # Check input image exists
+    if not os.path.exists(args.image):
+        logger.error(f"Input image not found: {args.image}")
         return False
     
     # Check template file exists
     if not os.path.exists(args.template):
-        print(f"❌ Error: Template file '{args.template}' not found")
+        logger.error(f"Template file not found: {args.template}")
         return False
     
     # Validate input file extension
-    input_ext = Path(args.input).suffix.lower()
-    if input_ext not in ['.pdf', '.jpg', '.jpeg', '.png', '.tiff', '.bmp']:
-        print(f"❌ Error: Unsupported input file format '{input_ext}'")
+    input_ext = Path(args.image).suffix.lower()
+    if input_ext not in ['.jpg', '.jpeg', '.png', '.tiff', '.bmp']:
+        logger.error(f"Unsupported input image format: {input_ext}")
         return False
     
     # Validate template file extension
     if not args.template.endswith('.json'):
-        print(f"❌ Error: Template file must be JSON format")
+        logger.error("Template file must be JSON format")
         return False
     
     # Create output directory if it doesn't exist
@@ -130,22 +126,6 @@ def validate_inputs(args: argparse.Namespace) -> bool:
     output_dir.mkdir(parents=True, exist_ok=True)
     
     return True
-
-
-def save_extraction_results(extracted_data: Dict[str, Any], output_path: str) -> None:
-    """
-    Save OCR extraction results to JSON file for auditing.
-    
-    Args:
-        extracted_data: Dictionary containing extracted OCR data
-        output_path: Path for output PDF (used to generate JSON filename)
-    """
-    json_path = Path(output_path).with_suffix('.json')
-    
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(extracted_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"📄 Extraction results saved to: {json_path}")
 
 
 def main() -> int:
@@ -159,108 +139,158 @@ def main() -> int:
     args = parser.parse_args()
     
     # Print header
-    print("🔧 FirstChild - OCR-based PDF Form Filling Tool")
-    print("=" * 50)
+    print("=" * 70)
+    print("🔧 Auto Form Fill - OCR-based PDF Form Filling Tool")
+    print("=" * 70)
+    
+    start_time = time.time()
     
     try:
         # Validate inputs
+        logger.info("Validating inputs...")
         if not validate_inputs(args):
             return 1
         
-        print(f"📁 Input file: {args.input}")
-        print(f"📋 Template: {args.template}")
-        print(f"💾 Output: {args.output}")
-        print(f"🌐 Language: {args.lang}")
+        logger.info(f"📁 Input image: {args.image}")
+        logger.info(f"📋 Template: {args.template}")
+        logger.info(f"💾 Output: {args.output}")
+        logger.info(f"🌐 Languages: {args.languages}")
         
-        # Initialize scanner and overlay services if needed
-        scanner_service = None
-        overlay_service = None
+        # Initialize database if not disabled
+        if not args.no_db:
+            logger.info("\n🔄 Step 1: Initializing database...")
+            try:
+                init_database()
+                logger.info("✅ Database initialized successfully")
+            except Exception as e:
+                logger.warning(f"⚠️  Database initialization failed: {e}")
+                logger.warning("Continuing without database storage...")
+                args.no_db = True
         
-        if args.scan or args.overlay:
-            print("\n🔄 Initializing scanner and overlay services...")
-            scanner_service = ScannerService()
-            overlay_service = OverlayService(scanner_service)
-            
-            # List available scanners
-            scanners = scanner_service.get_available_scanners()
-            if scanners:
-                print(f"✅ Found {len(scanners)} scanner(s):")
-                for scanner in scanners:
-                    print(f"  • {scanner['name']} ({scanner['type']})")
-            else:
-                print("⚠️  No scanners detected")
+        # Step 2: Load template
+        logger.info("\n🔄 Step 2: Loading form template...")
+        form_filler = FormFiller()
+        template_data = form_filler.load_template(args.template)
+        logger.info("✅ Template loaded successfully")
         
-        # Step 1: Load and validate template
-        print("\n🔄 Step 1: Loading template...")
-        template_loader = TemplateLoader()
-        template_data = template_loader.load_template(args.template)
-        template_loader.validate_template(template_data)
-        print("✅ Template loaded and validated successfully")
+        # Step 3: Initialize OCR
+        logger.info("\n🔄 Step 3: Initializing OCR engine...")
+        languages = [lang.strip() for lang in args.languages.split(',')]
+        ocr_extractor = OCRExtractor(languages=languages, debug=args.debug)
+        logger.info("✅ OCR engine initialized")
         
-        # Step 2: Handle input (scan or load file)
-        print("\n🔄 Step 2: Processing input...")
-        if args.scan:
-            # Scan physical document
-            print("📷 Scanning physical document...")
-            scanned_path = scanner_service.scan_document(args.scanner)
-            print(f"✅ Document scanned: {scanned_path}")
-            input_path = scanned_path
-        else:
-            input_path = args.input
+        # Step 4: Extract data from image
+        logger.info("\n🔄 Step 4: Extracting data with OCR...")
+        extracted_data = ocr_extractor.extract_from_template(args.image, template_data)
+        logger.info(f"✅ Extracted {len(extracted_data)} fields")
         
-        # Preprocess input file
-        preprocessor = PreprocessorService()
-        processed_images = preprocessor.process_input(input_path)
-        print(f"✅ Processed {len(processed_images)} page(s)")
-        
-        # Step 3: Extract data using OCR
-        print("\n🔄 Step 3: Extracting data with OCR...")
-        ocr_extractor = OCRExtractor(language=args.lang, debug=args.debug)
-        extracted_data = {}
-        
-        for page_num, image in enumerate(processed_images, 1):
-            if page_num in [field.get('page', 1) for field in template_data['fields']]:
-                page_data = ocr_extractor.extract_from_page(
-                    image, template_data, page_num
-                )
-                extracted_data.update(page_data)
-        
-        print(f"✅ Extracted {len(extracted_data)} field(s)")
-        
-        # Display extracted data
+        # Display extracted data summary
         if args.debug:
-            print("\n📊 Extracted Data:")
-            for field_name, value in extracted_data.items():
-                print(f"  • {field_name}: '{value['text']}'")
+            logger.info("\n📊 Extracted Data Summary:")
+            for field_id, field_data in extracted_data.items():
+                logger.info(f"  • {field_data['field_name']}: '{field_data['text']}' "
+                          f"(confidence: {field_data['confidence']:.2f})")
         
-        # Step 4: Handle output (PDF or overlay)
-        if args.overlay:
-            print("\n🔄 Step 4: Creating overlay on physical form...")
-            overlay_template = args.overlay_template or "business_tax_overlay"
-            
-            # Create overlay on scanned form
-            overlaid_path = overlay_service.overlay_on_digital_form(
-                input_path, overlay_template, extracted_data, args.output
-            )
-            print(f"✅ Overlaid form created: {overlaid_path}")
+        # Step 5: Validate extracted data
+        logger.info("\n🔄 Step 5: Validating extracted data...")
+        validation_result = form_filler.validate_extracted_data(extracted_data, template_data)
+        
+        if validation_result['errors']:
+            logger.warning("⚠️  Validation errors found:")
+            for error in validation_result['errors']:
+                logger.warning(f"  • {error}")
+        
+        if validation_result['warnings']:
+            logger.info("⚠️  Validation warnings:")
+            for warning in validation_result['warnings']:
+                logger.info(f"  • {warning}")
+        
+        if validation_result['valid']:
+            logger.info("✅ Validation passed")
+        
+        # Step 6: Save extracted data JSON
+        if args.data:
+            data_output_path = args.data
         else:
-            # Generate filled PDF
-            print("\n🔄 Step 4: Generating filled PDF...")
-            pdf_generator = PDFGenerator()
-            pdf_generator.create_filled_pdf(
-                template_data, extracted_data, args.output
-            )
-            print(f"✅ Filled PDF generated: {args.output}")
+            data_output_path = str(Path(args.output).with_suffix('.json'))
         
-        # Step 5: Save extraction results for auditing
-        print("\n🔄 Step 5: Saving extraction results...")
-        save_extraction_results(extracted_data, args.output)
+        logger.info("\n🔄 Step 6: Saving extracted data...")
+        form_filler.save_extracted_json(extracted_data, data_output_path)
+        logger.info(f"✅ Extracted data saved to: {data_output_path}")
         
-        print("\n🎉 Process completed successfully!")
+        # Step 7: Prepare data for PDF
+        logger.info("\n🔄 Step 7: Preparing data for PDF generation...")
+        pdf_data = form_filler.prepare_data_for_pdf(extracted_data, template_data)
+        logger.info(f"✅ Prepared {len(pdf_data)} fields for PDF")
+        
+        # Step 8: Generate filled PDF
+        logger.info("\n🔄 Step 8: Generating filled PDF...")
+        pdf_generator = PDFGenerator()
+        
+        # Use the image as template background
+        pdf_generator.create_filled_pdf_from_image(args.image, pdf_data, args.output)
+        logger.info(f"✅ Filled PDF generated: {args.output}")
+        
+        # Step 9: Save to database
+        if not args.no_db:
+            logger.info("\n🔄 Step 9: Saving to database...")
+            try:
+                # Create or get template record
+                template_name = template_data.get('forms', [{}])[0].get('name', 
+                               template_data.get('form', 'Unknown Form'))
+                form_type = template_data.get('forms', [{}])[0].get('form_type',
+                           template_data.get('form_id', 'unknown'))
+                
+                # Create processing record
+                processing_id = FormProcessing.create(
+                    template_id=1,  # Placeholder, should create/get template first
+                    input_file=args.image,
+                    status='processing'
+                )
+                
+                # Save extracted data
+                data_list = [
+                    {
+                        'field_name': data['field_name'],
+                        'field_value': data['text'],
+                        'confidence': data['confidence'],
+                        'field_type': data.get('field_type')
+                    }
+                    for data in extracted_data.values()
+                ]
+                ExtractedData.bulk_create(processing_id, data_list)
+                
+                # Update processing status
+                processing_time = time.time() - start_time
+                FormProcessing.update_status(
+                    processing_id,
+                    status='completed',
+                    output_file=args.output,
+                    processing_time=processing_time
+                )
+                
+                logger.info("✅ Data saved to database")
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to save to database: {e}")
+        
+        # Calculate total time
+        total_time = time.time() - start_time
+        
+        print("\n" + "=" * 70)
+        print(f"🎉 Process completed successfully in {total_time:.2f} seconds!")
+        print("=" * 70)
+        print(f"📄 Filled PDF: {args.output}")
+        print(f"📊 Extracted Data: {data_output_path}")
+        print("=" * 70)
+        
         return 0
         
+    except KeyboardInterrupt:
+        logger.warning("\n⚠️  Process interrupted by user")
+        return 1
+        
     except Exception as e:
-        print(f"\n❌ Error: {str(e)}")
+        logger.error(f"\n❌ Error: {str(e)}")
         if args.debug:
             import traceback
             traceback.print_exc()
