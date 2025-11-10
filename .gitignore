@@ -38,7 +38,7 @@ dist
 *env
 
 .env.example
-*env.example
+*env.example2
 
 # Logs and debug files
 npm-debug.log*
