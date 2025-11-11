@@ -41,7 +41,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**Note**: First run will download PaddleOCR models (~200MB), takes 5-10 minutes.
+**Note**: Make sure Tesseract OCR is installed: `sudo pacman -S tesseract tesseract-data-nep`
 
 ## 🎬 Run Demo
 
@@ -89,7 +89,7 @@ python tests/smoke_test.py
 | File | Purpose |
 |------|---------|
 | `main.py` | CLI entry point |
-| `ocr/extractor.py` | PaddleOCR implementation |
+| `ocr/extractor.py` | Tesseract OCR implementation |
 | `filler/form_filler.py` | Template mapping |
 | `printer/pdf_generator.py` | PDF generation |
 | `db/models.py` | Database CRUD operations |
@@ -99,7 +99,7 @@ python tests/smoke_test.py
 
 ```bash
 # Check dependencies
-python -c "import paddleocr, pymysql, cv2; print('✅ All dependencies OK')"
+python -c "import pytesseract, pymysql, cv2; print('✅ All dependencies OK')"
 
 # Test database connection
 python -c "from db import init_database; init_database(); print('✅ Database OK')"
@@ -120,11 +120,16 @@ data/output/
 
 ## 🛠️ Troubleshooting
 
-### PaddleOCR download timeout
+### Tesseract OCR not found
 ```bash
-# Set timeout
-export PIP_DEFAULT_TIMEOUT=1000
-pip install paddleocr --upgrade
+# Arch Linux
+sudo pacman -S tesseract tesseract-data-nep
+
+# Ubuntu/Debian
+sudo apt-get install tesseract-ocr tesseract-ocr-nep
+
+# Verify installation
+tesseract --version
 ```
 
 ### MySQL connection refused

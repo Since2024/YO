@@ -5,6 +5,7 @@ from .models import (
     FormTemplate,
     FormProcessing,
     ExtractedData,
+    OCRSubmission,
     create_tables,
     drop_tables
 )
@@ -16,6 +17,7 @@ __all__ = [
     'FormTemplate',
     'FormProcessing',
     'ExtractedData',
+    'OCRSubmission',
     'create_tables',
     'drop_tables'
 ]

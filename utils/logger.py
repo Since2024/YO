@@ -48,11 +48,13 @@ def setup_logger(
     
     # File handler
     if log_file is None:
-        logs_dir = Path("/app/logs")
-        logs_dir.mkdir(exist_ok=True)
+        # Default to a 'logs' directory at the project root (two levels up from this file)
+        project_root = Path(__file__).resolve().parents[1]
+        logs_dir = project_root / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
         log_file = logs_dir / f"app_{datetime.now().strftime('%Y%m%d')}.log"
     
-    file_handler = logging.FileHandler(log_file)
+    file_handler = logging.FileHandler(str(log_file))
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(detailed_formatter)
     logger.addHandler(file_handler)

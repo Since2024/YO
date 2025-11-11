@@ -2,7 +2,7 @@
 """
 Auto Form Fill - OCR-based PDF Form Filling CLI Application
 
-A comprehensive tool for automated form filling using PaddleOCR technology.
+A comprehensive tool for automated form filling using Tesseract OCR.
 Extracts data from scanned documents and fills official PDF forms for 
 Nepali government forms (Business Tax, Land/Sampati Tax).
 """
@@ -82,9 +82,9 @@ def setup_arguments() -> argparse.ArgumentParser:
     
     parser.add_argument(
         "--languages", "-l",
-        default="en,hi",
+        default="nep+eng",
         type=str,
-        help="OCR languages (comma-separated, e.g., 'en,hi' for English and Devanagari)"
+        help="OCR languages for Tesseract (e.g., 'nep+eng', 'eng', 'nep')"
     )
     
     return parser
@@ -175,8 +175,7 @@ def main() -> int:
         
         # Step 3: Initialize OCR
         logger.info("\n🔄 Step 3: Initializing OCR engine...")
-        languages = [lang.strip() for lang in args.languages.split(',')]
-        ocr_extractor = OCRExtractor(languages=languages, debug=args.debug)
+        ocr_extractor = OCRExtractor(languages=args.languages, debug=args.debug)
         logger.info("✅ OCR engine initialized")
         
         # Step 4: Extract data from image
@@ -188,7 +187,7 @@ def main() -> int:
         if args.debug:
             logger.info("\n📊 Extracted Data Summary:")
             for field_id, field_data in extracted_data.items():
-                logger.info(f"  • {field_data['field_name']}: '{field_data['text']}' "
+                logger.info(f"  • {field_data['name']}: '{field_data['text']}' "
                           f"(confidence: {field_data['confidence']:.2f})")
         
         # Step 5: Validate extracted data
@@ -235,41 +234,22 @@ def main() -> int:
         if not args.no_db:
             logger.info("\n🔄 Step 9: Saving to database...")
             try:
-                # Create or get template record
-                template_name = template_data.get('forms', [{}])[0].get('name', 
-                               template_data.get('form', 'Unknown Form'))
-                form_type = template_data.get('forms', [{}])[0].get('form_type',
-                           template_data.get('form_id', 'unknown'))
+                # Get form name from template
+                form_name = template_data.get('forms', [{}])[0].get('name', 
+                           template_data.get('form', 'Unknown Form'))
                 
-                # Create processing record
-                processing_id = FormProcessing.create(
-                    template_id=1,  # Placeholder, should create/get template first
+                # Save to ocr_submissions table
+                from db import OCRSubmission
+                import json as json_module
+                
+                submission_id = OCRSubmission.create(
+                    form_name=form_name,
+                    extracted_data_json=json_module.dumps(extracted_data, ensure_ascii=False),
                     input_file=args.image,
-                    status='processing'
+                    output_file=args.output
                 )
                 
-                # Save extracted data
-                data_list = [
-                    {
-                        'field_name': data['field_name'],
-                        'field_value': data['text'],
-                        'confidence': data['confidence'],
-                        'field_type': data.get('field_type')
-                    }
-                    for data in extracted_data.values()
-                ]
-                ExtractedData.bulk_create(processing_id, data_list)
-                
-                # Update processing status
-                processing_time = time.time() - start_time
-                FormProcessing.update_status(
-                    processing_id,
-                    status='completed',
-                    output_file=args.output,
-                    processing_time=processing_time
-                )
-                
-                logger.info("✅ Data saved to database")
+                logger.info(f"✅ Data saved to database (submission_id: {submission_id})")
             except Exception as e:
                 logger.warning(f"⚠️  Failed to save to database: {e}")
         

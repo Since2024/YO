@@ -1,5 +1,5 @@
-"""OCR package using PaddleOCR."""
+"""OCR package using Tesseract OCR (pytesseract)."""
 
-from .extractor import OCRExtractor
+from .extractor import OCRExtractor, TesseractExtractor
 
-__all__ = ['OCRExtractor']
+__all__ = ['OCRExtractor', 'TesseractExtractor']

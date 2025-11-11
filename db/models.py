@@ -265,6 +265,55 @@ class ExtractedData:
             return cursor.fetchall()
 
 
+class OCRSubmission:
+    """Model for OCR submissions (simplified storage)."""
+    
+    @staticmethod
+    def create(form_name: str, extracted_data_json: str,
+               input_file: str, output_file: Optional[str] = None) -> int:
+        """
+        Create a new OCR submission record.
+        
+        Args:
+            form_name: Name of the form
+            extracted_data_json: JSON string of extracted data
+            input_file: Path to input image file
+            output_file: Path to output PDF file (optional)
+            
+        Returns:
+            int: Inserted submission ID
+        """
+        with get_db_cursor() as cursor:
+            sql = """
+                INSERT INTO ocr_submissions 
+                (form_name, extracted_data_json, input_file, output_file, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (form_name, extracted_data_json, input_file, 
+                                output_file, datetime.now()))
+            return cursor.lastrowid
+    
+    @staticmethod
+    def get_by_id(submission_id: int) -> Optional[Dict[str, Any]]:
+        """Get submission by ID."""
+        with get_db_cursor(commit=False) as cursor:
+            sql = "SELECT * FROM ocr_submissions WHERE id = %s"
+            cursor.execute(sql, (submission_id,))
+            return cursor.fetchone()
+    
+    @staticmethod
+    def get_all(limit: int = 100) -> List[Dict[str, Any]]:
+        """Get all submissions."""
+        with get_db_cursor(commit=False) as cursor:
+            sql = """
+                SELECT * FROM ocr_submissions 
+                ORDER BY created_at DESC 
+                LIMIT %s
+            """
+            cursor.execute(sql, (limit,))
+            return cursor.fetchall()
+
+
 def create_tables() -> None:
     """Create all database tables if they don't exist."""
     
@@ -314,6 +363,18 @@ def create_tables() -> None:
                 INDEX idx_field_name (field_name),
                 INDEX idx_created_at (created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """,
+        'ocr_submissions': """
+            CREATE TABLE IF NOT EXISTS ocr_submissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                form_name VARCHAR(255) NOT NULL,
+                extracted_data_json TEXT NOT NULL,
+                input_file VARCHAR(500) NOT NULL,
+                output_file VARCHAR(500),
+                created_at DATETIME NOT NULL,
+                INDEX idx_form_name (form_name),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """
     }
     
@@ -330,7 +391,7 @@ def create_tables() -> None:
 def drop_tables() -> None:
     """Drop all database tables. Use with caution!"""
     
-    tables = ['extracted_data', 'form_processings', 'form_templates']
+    tables = ['ocr_submissions', 'extracted_data', 'form_processings', 'form_templates']
     
     with get_db_cursor() as cursor:
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0")

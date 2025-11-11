@@ -1,0 +1,69 @@
+.
+├── data
+│   └── output
+├── db
+│   ├── connection.py
+│   ├── __init__.py
+│   └── models.py
+├── filler
+│   ├── form_filler.py
+│   └── __init__.py
+├── input
+│   └── samples
+├── legacy
+│   ├── convert_templates.py
+│   ├── create_better_sample.py
+│   ├── demo.py
+│   ├── demo_real_templates.py
+│   ├── demo_scanner_overlay.py
+│   ├── filler_generate_pdf.py
+│   ├── filler_ocr.py
+│   ├── filler_preprocess.py
+│   ├── filler_template_loader.py
+│   ├── overlay_system.py
+│   ├── scanner_cli.py
+│   ├── scanner_integration.py
+│   ├── test_application.py
+│   ├── test_result.md
+│   └── web_app.py
+├── main.py
+├── ocr
+│   ├── extractor.py
+│   ├── __init__.py
+│   └── __pycache__
+├── output
+│   ├── demo
+│   └── filled_forms
+├── printer
+│   ├── __init__.py
+│   └── pdf_generator.py
+├── project_structure.md
+├── QUICKSTART.md
+├── README.md
+├── REFACTORING_SUMMARY.md
+├── requirements.txt
+├── requirement.txt
+├── run_demo.sh
+├── structure.txt
+├── templates
+│   ├── business_back.jpg
+│   ├── business_front.jpg
+│   ├── business_tax_back.json
+│   ├── business_tax_front.json
+│   ├── sampati_front.jpg
+│   └── sampati_tax_page1_front.json
+├── tests
+│   ├── __init__.py
+│   └── smoke_test.py
+├── utils
+│   ├── __init__.py
+│   ├── logger.py
+│   └── __pycache__
+└── venv
+    ├── bin
+    ├── include
+    ├── lib
+    ├── lib64 -> lib
+    └── pyvenv.cfg
+
+23 directories, 44 files

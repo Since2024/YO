@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
-A comprehensive Python CLI application designed for automated form filling using PaddleOCR technology. Extracts data from scanned documents and fills official PDF forms for Nepali government forms (Business Tax, Land/Sampati Tax).
+A comprehensive Python CLI application designed for automated form filling using Tesseract OCR. Extracts data from scanned documents and fills official PDF forms for Nepali government forms (Business Tax, Land/Sampati Tax).
 
 ## 🎯 Project Overview
 
@@ -19,7 +19,7 @@ This MVP application automates the complete pipeline for form filling:
 ## 🛠️ Tech Stack
 
 - **Language**: Python 3.8+
-- **OCR Engine**: PaddleOCR (English + Devanagari support)
+- **OCR Engine**: Tesseract OCR (pytesseract) with Nepali + English support
 - **PDF Generation**: ReportLab + OpenCV/PIL
 - **Image Processing**: OpenCV, Pillow
 - **Database**: MySQL with pymysql
@@ -36,7 +36,7 @@ This MVP application automates the complete pipeline for form filling:
 │
 ├── ocr/                      # OCR processing
 │   ├── __init__.py
-│   └── extractor.py          # PaddleOCR implementation
+│   └── extractor.py          # Tesseract OCR implementation
 │
 ├── filler/                   # Form filling logic
 │   ├── __init__.py
@@ -234,7 +234,7 @@ Output files will be saved in `data/output/`
          ▼
 ┌─────────────────┐
 │  OCR Extract    │
-│  (PaddleOCR)    │
+│  (Tesseract OCR)    │
 └────────┬────────┘
          │
          ▼
@@ -346,9 +346,10 @@ data = ExtractedData.get_by_processing_id(processing_id)
 
 ### Common Issues
 
-1. **PaddleOCR initialization fails**:
-   - Ensure numpy version compatibility
-   - Try: `pip install paddleocr --upgrade`
+1. **Tesseract OCR not found**:
+   - Install Tesseract: `sudo pacman -S tesseract tesseract-data-nep`
+   - Verify: `tesseract --version`
+   - Check pytesseract can find it: `python -c "import pytesseract; print(pytesseract.get_tesseract_version())"`
 
 2. **MySQL connection error**:
    - Check MySQL is running: `sudo systemctl status mysql`
