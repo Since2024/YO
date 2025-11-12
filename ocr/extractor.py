@@ -1,18 +1,22 @@
-"""
-OCR extraction module using Tesseract OCR (pytesseract).
-Simple, efficient, and production-ready for Auto Form Fill MVP.
-"""
+"""OCR extraction module using Tesseract OCR (pytesseract)."""
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import cv2
 import numpy as np
-import pytesseract
+import pytesseract  # type: ignore
 from PIL import Image
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Ensure Tesseract can locate language data shipped with the project (if available)
+DEFAULT_TESSDATA_DIR = Path(__file__).resolve().parents[1] / "tessdata"
+if DEFAULT_TESSDATA_DIR.exists() and "TESSDATA_PREFIX" not in os.environ:
+    os.environ["TESSDATA_PREFIX"] = str(DEFAULT_TESSDATA_DIR)
+    logger.info(f"Using bundled tessdata directory: {DEFAULT_TESSDATA_DIR}")
 
 
 class TesseractExtractor:

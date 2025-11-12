@@ -1,417 +1,136 @@
-# Auto Form Fill - OCR-based PDF Form Filling Tool
+# Auto Form Fill – OCR + PDF Automation MVP
 
-[![Status](https://img.shields.io/badge/status-MVP-green)]()
-[![Python](https://img.shields.io/badge/python-3.8%2B-blue)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
+Automated pipeline for processing Nepali government forms. Upload a scanned form, run OCR (Tesseract with Nepali + English models), review and edit extracted data, store the validated payload in MySQL, and generate a filled PDF that can be downloaded or shared.
 
-A comprehensive Python CLI application designed for automated form filling using Tesseract OCR. Extracts data from scanned documents and fills official PDF forms for Nepali government forms (Business Tax, Land/Sampati Tax).
+## ✨ Key Features
 
-## 🎯 Project Overview
+- **Template-driven OCR** – JSON templates define bounding boxes for each field on Business Tax and Land Tax forms.
+- **Tesseract (nep+eng)** – Reliable text extraction for Nepali and English characters with bundled tessdata support.
+- **FastAPI backend** – REST endpoints for OCR, validation, persistence, and PDF generation.
+- **Streamlit frontend** – Minimal UI to upload images, review OCR results, edit values, and download filled PDFs.
+- **MySQL via SQLAlchemy** – Stores submission history (`ocr_submissions`) with extracted data and PDF paths.
+- **ReportLab PDF output** – Produces print-ready overlays on top of the original form template.
+- **CLI demo script** – `run_demo.sh` runs the full pipeline on a bundled sample image without launching the web stack.
 
-This MVP application automates the complete pipeline for form filling:
-- **Input**: Scanned form images (JPG/PNG)
-- **OCR**: Multi-language text extraction (English + Devanagari)
-- **Extraction**: Structured field-based data extraction
-- **Validation**: Field validation against templates
-- **Storage**: MySQL database for form history
-- **Output**: Filled PDF forms
-
-## 🛠️ Tech Stack
-
-- **Language**: Python 3.8+
-- **OCR Engine**: Tesseract OCR (pytesseract) with Nepali + English support
-- **PDF Generation**: ReportLab + OpenCV/PIL
-- **Image Processing**: OpenCV, Pillow
-- **Database**: MySQL with pymysql
-- **Configuration**: python-dotenv
-
-## 📁 Project Structure
+## 🗂 Project Structure
 
 ```
-/app/
-├── main.py                    # CLI orchestrator
-├── requirements.txt           # Python dependencies
-├── .env.example              # Environment variable template
-├── run_demo.sh               # Demo script
-│
-├── ocr/                      # OCR processing
-│   ├── __init__.py
-│   └── extractor.py          # Tesseract OCR implementation
-│
-├── filler/                   # Form filling logic
-│   ├── __init__.py
-│   └── form_filler.py        # Template mapping & validation
-│
-├── printer/                  # PDF export utilities
-│   ├── __init__.py
-│   └── pdf_generator.py      # ReportLab PDF generation
-│
-├── db/                       # Database layer
-│   ├── __init__.py
-│   ├── connection.py         # MySQL connection utils
-│   └── models.py             # Database models (CRUD operations)
-│
-├── utils/                    # Utilities
-│   ├── __init__.py
-│   └── logger.py             # Logging configuration
-│
-├── templates/                # JSON templates
-│   ├── business_tax_front.json
-│   ├── business_tax_back.json
-│   ├── sampati_tax_page1_front.json
-│   ├── sampati_tax_page2_back.json
-│   ├── business_front.jpg
-│   ├── business_back.jpg
-│   ├── sampati_front.jpg
-│   └── sampati_last.jpg
-│
-├── data/
-│   ├── input/                # Raw form images
-│   └── output/               # Generated results
-│
-├── logs/                     # Application logs
-│   └── app_*.log
-│
-└── tests/                    # Test suite
-    ├── __init__.py
-    └── smoke_test.py         # End-to-end smoke tests
+ocr/               # OCR extractor (pytesseract)
+filler/            # Template loading, validation, data prep
+printer/           # PDF generation utilities
+db/                # SQLAlchemy models & session helpers
+utils/             # Logging utilities
+main.py            # FastAPI application (uvicorn entrypoint)
+app.py             # Streamlit UI for the MVP
+run_demo.sh        # CLI demo pipeline
+requirements.txt   # Python dependencies
+templates/         # JSON templates + reference images
+data/              # Runtime data (uploads, etc.)
+output/            # Generated PDFs & JSON outputs
 ```
 
-## 🚀 Installation
+## ⚙️ Prerequisites
 
-### Prerequisites
+- Python 3.10+
+- Tesseract OCR with Nepali data:
+  ```bash
+  sudo pacman -S tesseract tesseract-data-nep
+  ```
+- MySQL server (or use SQLite fallback – see below)
 
-1. **Python 3.8+**
+## 🚀 Quick Start
+
+1. **Clone & install dependencies**
    ```bash
-   python3 --version
-   ```
-
-2. **MySQL Server**
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get install mysql-server
-   
-   # macOS
-   brew install mysql
-   
-   # Start MySQL
-   sudo systemctl start mysql  # Linux
-   brew services start mysql   # macOS
-   ```
-
-### Setup
-
-1. **Clone the repository**:
-   ```bash
-   cd /app
-   ```
-
-2. **Create virtual environment**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # Linux/macOS
-   # or
-   venv\Scripts\activate  # Windows
-   ```
-
-3. **Install dependencies**:
-   ```bash
+   python -m venv venv
+   source venv/bin/activate
    pip install -r requirements.txt
    ```
 
-4. **Configure environment**:
+2. **Configure environment**
    ```bash
    cp .env.example .env
    # Edit .env with your MySQL credentials
-   nano .env
+   ```
+   > Tip: set `DB_DRIVER=sqlite` to use a local SQLite database (`data/autoformfill.db`) when MySQL isn’t available.
+
+3. **Run the backend (FastAPI)**
+   ```bash
+   python main.py
+   # Server listens on http://localhost:8000
    ```
 
-5. **Initialize database**:
-   The database and tables will be created automatically on first run.
+4. **Launch the frontend (Streamlit)**
+   ```bash
+   streamlit run app.py
+   # Opens http://localhost:8501
+   ```
 
-## 📝 Configuration (.env)
+5. **Demo the pipeline via CLI (optional)**
+   ```bash
+   ./run_demo.sh
+   # Outputs: output/demo/demo_cli.pdf and demo_cli.json
+   ```
 
-```env
-# MySQL Database Configuration
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=your_password
-MYSQL_DB=auto_form_fill
+## 🌐 API Endpoints
 
-# Application Configuration
-DEBUG=True
-LOG_LEVEL=INFO
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| GET    | `/health` | Service health probe |
+| GET    | `/templates` | List available JSON templates |
+| POST   | `/ocr` | Run OCR on an uploaded image (multipart) |
+| POST   | `/submit` | Validate, persist, and generate filled PDF |
+| GET    | `/submissions` | Recent submissions (latest first) |
+| GET    | `/submissions/{id}` | Submission metadata |
+| GET    | `/submissions/{id}/pdf` | Download generated PDF |
 
-# Paths
-TEMPLATES_DIR=/app/templates
-DATA_INPUT_DIR=/app/data/input
-DATA_OUTPUT_DIR=/app/data/output
-LOGS_DIR=/app/logs
+## 🖥 Streamlit Workflow
 
-# OCR Configuration
-OCR_LANGUAGES=en,hi
-OCR_USE_GPU=False
-```
+1. Select a form template (Business Tax / Land Tax).
+2. Upload the scanned form image.
+3. Click **Run OCR** to populate fields automatically.
+4. Review + edit any values directly in the UI.
+5. Click **Validate & Save** to store data and generate the PDF.
+6. Download the filled PDF with a single click.
 
-## 🖥️ Usage
+Validation warnings and errors are surfaced immediately. All actions also log to the console via `utils/logger.py`.
 
-### Basic Command
+## 🗄 Database Schema
+
+`ocr_submissions`
+
+| Column          | Type     | Notes |
+| --------------- | -------- | ----- |
+| `id`            | INT PK   | Auto increment |
+| `form_name`     | VARCHAR  | Display name of template |
+| `template_id`   | VARCHAR  | JSON template filename |
+| `image_path`    | VARCHAR  | Stored upload path |
+| `pdf_path`      | VARCHAR  | Generated PDF path |
+| `fields_json`   | TEXT     | JSON payload of fields |
+| `validation_json` | TEXT   | Validation summary |
+| `created_at`    | DATETIME | UTC timestamp |
+
+## 🧪 Testing the Core Pipeline
+
+The CLI demo script uses the Business Tax front image:
 
 ```bash
-python main.py --image <input_image> --template <template_json> --output <output_pdf>
-```
-
-### Command Line Options
-
-| Option | Short | Required | Description |
-|--------|-------|----------|-------------|
-| `--image` | `-i` | Yes | Path to input form image (JPG/PNG) |
-| `--template` | `-t` | Yes | Path to JSON template file |
-| `--output` | `-o` | Yes | Path for output filled PDF |
-| `--data` | | No | Path to save extracted data JSON |
-| `--languages` | `-l` | No | OCR languages (default: en,hi) |
-| `--debug` | `-d` | No | Enable debug mode |
-| `--no-db` | | No | Skip database storage |
-
-### Examples
-
-1. **Business Tax Form (Front)**:
-   ```bash
-   python main.py \
-     --image templates/business_front.jpg \
-     --template templates/business_tax_front.json \
-     --output data/output/business_filled.pdf \
-     --debug
-   ```
-
-2. **Sampati/Land Tax Form (Front)**:
-   ```bash
-   python main.py \
-     --image templates/sampati_front.jpg \
-     --template templates/sampati_tax_page1_front.json \
-     --output data/output/sampati_filled.pdf
-   ```
-
-3. **With custom data output**:
-   ```bash
-   python main.py \
-     --image templates/business_front.jpg \
-     --template templates/business_tax_front.json \
-     --output data/output/filled.pdf \
-     --data data/output/extracted.json
-   ```
-
-## 🎬 Run Demo
-
-Run the automated demo script to test both forms:
-
-```bash
-chmod +x run_demo.sh
 ./run_demo.sh
 ```
 
-This will process:
-- Business Tax Form (Front)
-- Sampati/Land Tax Form (Front)
+It prints extracted field JSON, validation results, and writes both a PDF overlay and a companion JSON file to `output/demo/`.
 
-Output files will be saved in `data/output/`
+## 🛠 Troubleshooting
 
-## 📊 System Workflow
+- **Tesseract cannot find `nep` / `eng`**: make sure the language data is installed or download `nep.traineddata` into the `tessdata/` folder (the backend automatically sets `TESSDATA_PREFIX`).
+- **MySQL unavailable**: set `DB_DRIVER=sqlite` in `.env` to fall back to a local SQLite database for demos.
+- **Streamlit cannot contact backend**: confirm `python main.py` is running on `http://localhost:8000` and update the sidebar URL if necessary.
+- **PDF overlay misalignment**: verify the template JSON bounding boxes (`templates/*.json`) match the uploaded form resolution.
 
-```
-┌─────────────────┐
-│  Input Image    │
-│   (JPG/PNG)     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Preprocessing  │
-│  (OpenCV)       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  OCR Extract    │
-│  (Tesseract OCR)    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Template Match  │
-│  (Field Map)    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   Validation    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Save to MySQL  │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Generate PDF   │
-│  (ReportLab)    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Output PDF +   │
-│  JSON Data      │
-└─────────────────┘
-```
+## 📄 License
 
-## 🧪 Testing
-
-### Run Smoke Tests
-
-```bash
-python tests/smoke_test.py
-```
-
-Tests include:
-- Database connection
-- OCR initialization
-- Template loading
-- End-to-end pipeline
-
-## 📄 Template Format
-
-Templates are JSON files defining field positions and OCR parameters:
-
-```json
-{
-  "forms": [{
-    "name": "Form Name",
-    "form_type": "business_tax",
-    "fields": [
-      {
-        "id": "f001",
-        "name": "field_name",
-        "label": "Field Label",
-        "type": "text_line",
-        "page": 1,
-        "bbox": {
-          "px": [x, y, width, height],
-          "mm": [x_mm, y_mm, width_mm, height_mm]
-        },
-        "ocr": {
-          "lang": "nep",
-          "psm": 7
-        },
-        "validate": {
-          "req": true,
-          "type": "string",
-          "min_len": 2
-        }
-      }
-    ]
-  }]
-}
-```
-
-## 🗄️ Database Schema
-
-### Tables
-
-1. **form_templates**: Template definitions
-2. **form_processings**: Processing history
-3. **extracted_data**: OCR extracted field data
-
-### CRUD Operations
-
-```python
-from db import FormTemplate, FormProcessing, ExtractedData
-
-# Create template
-template_id = FormTemplate.create(name, form_type, path, fields_json)
-
-# Create processing
-processing_id = FormProcessing.create(template_id, input_file)
-
-# Save extracted data
-ExtractedData.bulk_create(processing_id, data_list)
-
-# Query
-processings = FormProcessing.get_all(limit=50)
-data = ExtractedData.get_by_processing_id(processing_id)
-```
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-1. **Tesseract OCR not found**:
-   - Install Tesseract: `sudo pacman -S tesseract tesseract-data-nep`
-   - Verify: `tesseract --version`
-   - Check pytesseract can find it: `python -c "import pytesseract; print(pytesseract.get_tesseract_version())"`
-
-2. **MySQL connection error**:
-   - Check MySQL is running: `sudo systemctl status mysql`
-   - Verify credentials in `.env`
-   - Ensure database exists or will be created
-
-3. **Low OCR accuracy**:
-   - Ensure input image is high resolution (300+ DPI)
-   - Check template bbox coordinates match the form
-   - Enable debug mode to inspect cropped regions
-
-4. **Missing dependencies**:
-   ```bash
-   pip install -r requirements.txt --force-reinstall
-   ```
-
-## 📈 Performance Tips
-
-- **Image Quality**: Use 300+ DPI scans for best results
-- **Preprocessing**: Images are automatically preprocessed (grayscale, denoise, threshold)
-- **GPU Acceleration**: Set `OCR_USE_GPU=True` in `.env` if CUDA available
-- **Batch Processing**: Process multiple forms by scripting main.py calls
-
-## 🚀 Future Enhancements
-
-- [ ] Web API (Flask/FastAPI) for remote form submission
-- [ ] Automatic template generation from form images
-- [ ] Multi-page PDF support
-- [ ] Template versioning
-- [ ] Dashboard for result visualization
-- [ ] Firebase backup integration
-- [ ] Advanced validation rules
-
-## 📝 Logging
-
-Logs are saved to `logs/app_YYYYMMDD.log` with the following levels:
-- **DEBUG**: Detailed processing information
-- **INFO**: General progress updates
-- **WARNING**: Non-critical issues
-- **ERROR**: Critical failures
-
-View logs:
-```bash
-tail -f logs/app_$(date +%Y%m%d).log
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📞 Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Enable debug mode for detailed error information
-3. Review logs in `logs/` directory
-4. Check template format and coordinates
+MIT – see `LICENSE` if included.
 
 ---
 
-**Auto Form Fill** - Automating Nepali government form filling with precision and efficiency.
+**Ready for the Friday demo:** start the FastAPI server, launch Streamlit, upload a form, confirm OCR values, and export the filled PDF – all offline on Linux.

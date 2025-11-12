@@ -1,0 +1,119 @@
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:150] - Validating inputs...
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:154] - 📁 Input image: ./templates/business_front.jpg
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:155] - 📋 Template: ./templates/business_tax_front.json
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:156] - 💾 Output: ./output/demo_filled.pdf
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:157] - 🌐 Languages: nep+eng
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:171] - 
+🔄 Step 2: Loading form template...
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:28] - Loading template: ./templates/business_tax_front.json
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:34] - Template loaded successfully
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:174] - ✅ Template loaded successfully
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:177] - 
+🔄 Step 3: Initializing OCR engine...
+2025-11-12 02:16:28 - ocr.extractor - INFO - [extractor.py:35] - 🔤 Initializing Tesseract OCR (lang=nep+eng)
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:179] - ✅ OCR engine initialized
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:182] - 
+🔄 Step 4: Extracting data with OCR...
+2025-11-12 02:16:28 - ocr.extractor - INFO - [extractor.py:161] - 📄 Extracting fields from template (./templates/business_front.jpg)
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'आन्तरिक संकेत नं': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'वडा कार्यालय': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'व्यवसायको नाम': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'स्थानीय दर्ता नं': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'दर्ता मिति': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'व्यवसाय सञ्चालन मिति': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'सञ्चालकको नाम': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'राष्ट्रिय परिचय पत्र नं': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'व्यवसायको किसिम': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'व्यवसायको ठेगाना': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'पथ/टोलको नाम': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'कुल पूँजी': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'व्यवसायको पान नं': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - WARNING - [extractor.py:230] - ⚠️ OCR failed for field 'अन्य निकायमा दर्ता भएको कार्यालयको नाम': (1, 'Error opening data file /usr/share/tessdata/nep.traineddata Please make sure the TESSDATA_PREFIX environment variable is set to your "tessdata" directory. Failed loading language \'nep\' Tesseract couldn\'t load any languages! Could not initialize tesseract.')
+2025-11-12 02:16:28 - ocr.extractor - INFO - [extractor.py:243] - ✅ Extracted 15 fields from template
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:184] - ✅ Extracted 15 fields
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:194] - 
+🔄 Step 5: Validating extracted data...
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:53] - Validating extracted data
+2025-11-12 02:16:28 - filler.form_filler - WARNING - [form_filler.py:111] - Validation failed with 12 errors
+2025-11-12 02:16:28 - filler.form_filler - WARNING - [form_filler.py:114] - 1 validation warnings
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:198] - ⚠️  Validation errors found:
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'आन्तरिक संकेत नं' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'व्यवसायको नाम' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'स्थानीय दर्ता नं' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'दर्ता मिति' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'व्यवसाय सञ्चालन मिति' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'सञ्चालकको नाम' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'राष्ट्रिय परिचय पत्र नं' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'व्यवसायको किसिम' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'व्यवसायको ठेगाना' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'पथ/टोलको नाम' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'कुल पूँजी' is empty
+2025-11-12 02:16:28 - auto_form_fill - WARNING - [main.py:200] -   • Required field 'व्यवसायको पान नं' is empty
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:203] - ⚠️  Validation warnings:
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:205] -   • Field 'ई-मेल' has low confidence: 0.19
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:216] - 
+🔄 Step 6: Saving extracted data...
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:171] - Saving extracted data to: output/demo_filled.json
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:179] - Extracted data saved successfully
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:218] - ✅ Extracted data saved to: output/demo_filled.json
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:221] - 
+🔄 Step 7: Preparing data for PDF generation...
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:130] - Preparing data for PDF generation
+2025-11-12 02:16:28 - filler.form_filler - INFO - [form_filler.py:159] - Prepared 15 fields for PDF generation
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:223] - ✅ Prepared 15 fields for PDF
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:226] - 
+🔄 Step 8: Generating filled PDF...
+2025-11-12 02:16:28 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 02:16:28 - printer.pdf_generator - INFO - [pdf_generator.py:38] - Creating filled PDF from template image: ./templates/business_front.jpg
+2025-11-12 02:16:28 - printer.pdf_generator - INFO - [pdf_generator.py:59] - Filled PDF created successfully: ./output/demo_filled.pdf
+2025-11-12 02:16:28 - auto_form_fill - INFO - [main.py:231] - ✅ Filled PDF generated: ./output/demo_filled.pdf
+2025-11-12 14:57:29 - __main__ - INFO - [extractor.py:35] - 🔤 Initializing Tesseract OCR (lang=nep+eng)
+2025-11-12 14:57:29 - __main__ - INFO - [extractor.py:90] - 🖼️ Running OCR on ./templates/business_front.jpg
+2025-11-12 17:35:58 - __main__ - INFO - [extractor.py:35] - 🔤 Initializing Tesseract OCR (lang=nep+eng)
+2025-11-12 17:35:58 - __main__ - INFO - [extractor.py:90] - 🖼️ Running OCR on ./templates/business_front.jpg
+2025-11-12 17:36:03 - __main__ - INFO - [extractor.py:142] - 💾 Saved OCR result to: templates/business_front.ocr.json
+2025-11-12 17:36:03 - __main__ - INFO - [extractor.py:144] - ✅ Extracted 173 text lines
+2025-11-12 20:09:08 - ocr.extractor - INFO - [extractor.py:19] - Using bundled tessdata directory: /home/npc/YO/tessdata
+2025-11-12 20:09:08 - filler.form_filler - INFO - [form_filler.py:28] - Loading template: /home/npc/YO/templates/business_tax_front.json
+2025-11-12 20:09:08 - filler.form_filler - INFO - [form_filler.py:34] - Template loaded successfully
+2025-11-12 20:09:08 - ocr.extractor - INFO - [extractor.py:39] - 🔤 Initializing Tesseract OCR (lang=nep+eng)
+2025-11-12 20:09:08 - ocr.extractor - INFO - [extractor.py:165] - 📄 Extracting fields from template (/home/npc/YO/templates/business_front.jpg)
+2025-11-12 20:09:12 - ocr.extractor - INFO - [extractor.py:247] - ✅ Extracted 15 fields from template
+2025-11-12 20:09:12 - filler.form_filler - INFO - [form_filler.py:53] - Validating extracted data
+2025-11-12 20:09:12 - filler.form_filler - WARNING - [form_filler.py:111] - Validation failed with 2 errors
+2025-11-12 20:09:12 - filler.form_filler - WARNING - [form_filler.py:114] - 14 validation warnings
+2025-11-12 20:09:12 - filler.form_filler - INFO - [form_filler.py:130] - Preparing data for PDF generation
+2025-11-12 20:09:12 - filler.form_filler - INFO - [form_filler.py:159] - Prepared 15 fields for PDF generation
+2025-11-12 20:09:12 - filler.form_filler - INFO - [form_filler.py:171] - Saving extracted data to: /home/npc/YO/output/demo/demo_cli.json
+2025-11-12 20:09:12 - filler.form_filler - INFO - [form_filler.py:179] - Extracted data saved successfully
+2025-11-12 20:09:12 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 20:09:12 - printer.pdf_generator - INFO - [pdf_generator.py:38] - Creating filled PDF from template image: /home/npc/YO/templates/business_front.jpg
+2025-11-12 20:09:12 - printer.pdf_generator - INFO - [pdf_generator.py:59] - Filled PDF created successfully: /home/npc/YO/output/demo/demo_cli.pdf
+2025-11-12 20:11:44 - ocr.extractor - INFO - [extractor.py:19] - Using bundled tessdata directory: /home/npc/YO/tessdata
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:27] - Testing database connection...
+2025-11-12 20:11:44 - db.connection - INFO - [connection.py:83] - Ensuring database tables exist
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:33] - ✅ Database connection successful
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:42] - Testing OCR engine initialization...
+2025-11-12 20:11:44 - ocr.extractor - INFO - [extractor.py:39] - 🔤 Initializing Tesseract OCR (lang=nep+eng)
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:45] - ✅ OCR engine initialized successfully
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:54] - Testing template loading...
+2025-11-12 20:11:44 - filler.form_filler - INFO - [form_filler.py:28] - Loading template: /home/npc/YO/templates/business_tax_front.json
+2025-11-12 20:11:44 - filler.form_filler - INFO - [form_filler.py:34] - Template loaded successfully
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:63] - ✅ Template loaded: 15 fields
+2025-11-12 20:11:44 - smoke_test - INFO - [smoke_test.py:72] - Testing end-to-end pipeline...
+2025-11-12 20:11:44 - filler.form_filler - INFO - [form_filler.py:28] - Loading template: /home/npc/YO/templates/business_tax_front.json
+2025-11-12 20:11:44 - filler.form_filler - INFO - [form_filler.py:34] - Template loaded successfully
+2025-11-12 20:11:44 - ocr.extractor - INFO - [extractor.py:39] - 🔤 Initializing Tesseract OCR (lang=nep+eng)
+2025-11-12 20:11:44 - ocr.extractor - INFO - [extractor.py:165] - 📄 Extracting fields from template (/home/npc/YO/templates/business_front.jpg)
+2025-11-12 20:11:48 - ocr.extractor - INFO - [extractor.py:247] - ✅ Extracted 15 fields from template
+2025-11-12 20:11:48 - smoke_test - INFO - [smoke_test.py:87] -   Extracted 15 fields
+2025-11-12 20:11:48 - filler.form_filler - INFO - [form_filler.py:53] - Validating extracted data
+2025-11-12 20:11:48 - filler.form_filler - WARNING - [form_filler.py:111] - Validation failed with 2 errors
+2025-11-12 20:11:48 - filler.form_filler - WARNING - [form_filler.py:114] - 14 validation warnings
+2025-11-12 20:11:48 - smoke_test - INFO - [smoke_test.py:90] -   Validation: False
+2025-11-12 20:11:48 - filler.form_filler - INFO - [form_filler.py:130] - Preparing data for PDF generation
+2025-11-12 20:11:48 - filler.form_filler - INFO - [form_filler.py:159] - Prepared 15 fields for PDF generation
+2025-11-12 20:11:48 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 20:11:48 - printer.pdf_generator - INFO - [pdf_generator.py:38] - Creating filled PDF from template image: /home/npc/YO/templates/business_front.jpg
+2025-11-12 20:11:48 - printer.pdf_generator - INFO - [pdf_generator.py:59] - Filled PDF created successfully: /home/npc/YO/output/tests/smoke_test.pdf
+2025-11-12 20:11:48 - smoke_test - INFO - [smoke_test.py:98] - ✅ End-to-end pipeline successful. Output: /home/npc/YO/output/tests/smoke_test.pdf (359963 bytes)

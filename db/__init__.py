@@ -1,23 +1,13 @@
-"""Database package for MySQL integration."""
+"""Database package for Auto Form Fill MVP."""
 
-from .connection import get_db_connection, init_database, close_connection
-from .models import (
-    FormTemplate,
-    FormProcessing,
-    ExtractedData,
-    OCRSubmission,
-    create_tables,
-    drop_tables
-)
+from .connection import get_engine, get_session, init_db, SessionLocal
+from .models import Base, FormSubmission
 
 __all__ = [
-    'get_db_connection',
-    'init_database',
-    'close_connection',
-    'FormTemplate',
-    'FormProcessing',
-    'ExtractedData',
-    'OCRSubmission',
-    'create_tables',
-    'drop_tables'
+    "get_engine",
+    "get_session",
+    "init_db",
+    "SessionLocal",
+    "Base",
+    "FormSubmission",
 ]

@@ -1,162 +1,76 @@
 # Quick Start Guide - Auto Form Fill MVP
 
-## 🚀 Setup (5 minutes)
-
-### 1. Install MySQL (if not already installed)
+## 1. Install prerequisites
 
 ```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install mysql-server
-sudo systemctl start mysql
-sudo systemctl enable mysql
-
-# Set root password
-sudo mysql
-ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';
-FLUSH PRIVILEGES;
-EXIT;
+sudo pacman -S tesseract tesseract-data-nep
+# or use your distro's package manager
 ```
 
-### 2. Configure Environment
+(Optional) install MySQL and create a database, or plan to use the SQLite fallback described below.
+
+## 2. Setup project
 
 ```bash
-cd /app
-
-# Copy environment file
-cp .env.example .env
-
-# Edit with your MySQL credentials (if different)
-nano .env
-```
-
-### 3. Install Python Dependencies
-
-```bash
-# If not in virtual environment
-python3 -m venv venv
+python -m venv venv
 source venv/bin/activate
-
-# Install requirements
 pip install -r requirements.txt
+
+cp .env.example .env
+# edit .env with DB credentials or switch to SQLite
 ```
 
-**Note**: Make sure Tesseract OCR is installed: `sudo pacman -S tesseract tesseract-data-nep`
+To use SQLite (recommended for quick local demos):
+```
+DB_DRIVER=sqlite
+DB_PATH=data/autoformfill.db
+```
 
-## 🎬 Run Demo
+## 3. Launch services
 
+Start the FastAPI backend:
 ```bash
-chmod +x run_demo.sh
+python main.py
+```
+Backend listens on `http://localhost:8000`.
+
+In a new terminal (same virtualenv), start the Streamlit UI:
+```bash
+streamlit run app.py
+```
+Open the provided URL (default `http://localhost:8501`).
+
+## 4. Demo workflow
+
+1. Select a JSON template in the sidebar.
+2. Upload a scanned form image (Business Tax / Land Tax).
+3. Click **Run OCR** to auto-populate fields.
+4. Review & edit values if needed.
+5. Click **Validate & Save** to persist and generate the PDF.
+6. Download the filled PDF using the provided button.
+
+## 5. CLI smoke test
+
+Run the bundled demo without the UI:
+```bash
 ./run_demo.sh
 ```
+Outputs are placed in `output/demo/`.
 
-This processes:
-- Business Tax Form (Front)
-- Sampati/Land Tax Form (Front)
+## 6. Troubleshooting
 
-Output: `data/output/`
+- **Tesseract errors (`language not found`)**: make sure `nep.traineddata` exists. The repo bundles a `tessdata/` folder and sets `TESSDATA_PREFIX` automatically.
+- **Database connection issues**: confirm credentials in `.env` or switch to SQLite.
+- **Streamlit cannot reach backend**: ensure `python main.py` is running and the sidebar URL matches (`http://localhost:8000`).
 
-## 📝 Manual Usage
-
-### Single Form Processing
-
-```bash
-python main.py \
-  --image templates/business_front.jpg \
-  --template templates/business_tax_front.json \
-  --output data/output/filled.pdf \
-  --debug
-```
-
-### Without Database
+## 7. Helpful commands
 
 ```bash
-python main.py \
-  --image templates/business_front.jpg \
-  --template templates/business_tax_front.json \
-  --output data/output/filled.pdf \
-  --no-db
-```
-
-## 🧪 Run Tests
-
-```bash
+# Smoke tests
 python tests/smoke_test.py
+
+# Verify dependencies
+python -c "import pytesseract, sqlalchemy, cv2; print('✅ Ready!')"
 ```
 
-## 📁 Key Files
-
-| File | Purpose |
-|------|---------|
-| `main.py` | CLI entry point |
-| `ocr/extractor.py` | Tesseract OCR implementation |
-| `filler/form_filler.py` | Template mapping |
-| `printer/pdf_generator.py` | PDF generation |
-| `db/models.py` | Database CRUD operations |
-| `.env` | Configuration |
-
-## 🔍 Verify Installation
-
-```bash
-# Check dependencies
-python -c "import pytesseract, pymysql, cv2; print('✅ All dependencies OK')"
-
-# Test database connection
-python -c "from db import init_database; init_database(); print('✅ Database OK')"
-
-# Check template
-python -c "from filler import FormFiller; f = FormFiller(); f.load_template('templates/business_tax_front.json'); print('✅ Template OK')"
-```
-
-## 📊 Output Structure
-
-```
-data/output/
-├── business_tax_front_filled.pdf    # Filled PDF
-├── business_tax_front_data.json     # Extracted data
-├── sampati_tax_front_filled.pdf
-└── sampati_tax_front_data.json
-```
-
-## 🛠️ Troubleshooting
-
-### Tesseract OCR not found
-```bash
-# Arch Linux
-sudo pacman -S tesseract tesseract-data-nep
-
-# Ubuntu/Debian
-sudo apt-get install tesseract-ocr tesseract-ocr-nep
-
-# Verify installation
-tesseract --version
-```
-
-### MySQL connection refused
-```bash
-# Check MySQL is running
-sudo systemctl status mysql
-
-# Start if not running
-sudo systemctl start mysql
-```
-
-### Low OCR accuracy
-- Ensure input images are 300+ DPI
-- Check template bbox coordinates
-- Enable debug mode: `--debug`
-
-## 📖 Full Documentation
-
-See `README.md` for complete documentation.
-
-## 🎯 Next Steps
-
-1. Process your own forms
-2. Create new templates (see template format in README)
-3. Integrate with your workflow
-4. Explore database CRUD operations
-
----
-
-**Ready to automate!** 🚀
+For full documentation, architecture, and API details, see `README.md`.

@@ -1,281 +1,286 @@
 #!/usr/bin/env python3
-"""
-Auto Form Fill - OCR-based PDF Form Filling CLI Application
+"""FastAPI backend for the Auto Form Fill MVP."""
 
-A comprehensive tool for automated form filling using Tesseract OCR.
-Extracts data from scanned documents and fills official PDF forms for 
-Nepali government forms (Business Tax, Land/Sampati Tax).
-"""
+from __future__ import annotations
 
-import argparse
-import sys
-import os
-import time
+import json
 from pathlib import Path
-from typing import Optional
-from dotenv import load_dotenv
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
-# Load environment variables
-load_dotenv()
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 
-# Import modules
-from utils.logger import setup_logger
-from ocr.extractor import OCRExtractor
+from db import FormSubmission, get_session, init_db
 from filler.form_filler import FormFiller
+from ocr.extractor import OCRExtractor
 from printer.pdf_generator import PDFGenerator
-from db import init_database, FormTemplate, FormProcessing, ExtractedData
+from utils.logger import get_logger
 
-# Setup logger
-logger = setup_logger()
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = BASE_DIR / "templates"
+UPLOAD_DIR = BASE_DIR / "data" / "uploads"
+OUTPUT_DIR = BASE_DIR / "output" / "generated"
 
+for directory in (UPLOAD_DIR, OUTPUT_DIR):
+    directory.mkdir(parents=True, exist_ok=True)
 
-def setup_arguments() -> argparse.ArgumentParser:
-    """
-    Setup command line argument parser.
-    
-    Returns:
-        argparse.ArgumentParser: Configured argument parser
-    """
-    parser = argparse.ArgumentParser(
-        description="Auto Form Fill: OCR-based PDF Form Filling Tool for Nepali Government Forms",
-        epilog="Example: python main.py --image business_front.jpg --template templates/business_tax_front.json --output filled_form.pdf"
-    )
-    
-    parser.add_argument(
-        "--image", "-i",
-        required=True,
-        type=str,
-        help="Path to input form image (JPG/PNG)"
-    )
-    
-    parser.add_argument(
-        "--template", "-t",
-        required=True,
-        type=str,
-        help="Path to JSON template file defining form fields"
-    )
-    
-    parser.add_argument(
-        "--output", "-o",
-        required=True,
-        type=str,
-        help="Path for output filled PDF"
-    )
-    
-    parser.add_argument(
-        "--data",
-        type=str,
-        help="Path to save extracted data JSON (optional)"
-    )
-    
-    parser.add_argument(
-        "--debug", "-d",
-        action="store_true",
-        help="Enable debug mode with detailed logging"
-    )
-    
-    parser.add_argument(
-        "--no-db",
-        action="store_true",
-        help="Skip database storage"
-    )
-    
-    parser.add_argument(
-        "--languages", "-l",
-        default="nep+eng",
-        type=str,
-        help="OCR languages for Tesseract (e.g., 'nep+eng', 'eng', 'nep')"
-    )
-    
-    return parser
+logger = get_logger(__name__)
+form_filler = FormFiller()
+pdf_generator = PDFGenerator()
+
+init_db()
+
+app = FastAPI(
+    title="Auto Form Fill API",
+    description="OCR + PDF generation backend for Nepali government forms.",
+    version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-def validate_inputs(args: argparse.Namespace) -> bool:
-    """
-    Validate input arguments and file paths.
-    
-    Args:
-        args: Parsed command line arguments
-        
-    Returns:
-        bool: True if all validations pass
-    """
-    # Check input image exists
-    if not os.path.exists(args.image):
-        logger.error(f"Input image not found: {args.image}")
-        return False
-    
-    # Check template file exists
-    if not os.path.exists(args.template):
-        logger.error(f"Template file not found: {args.template}")
-        return False
-    
-    # Validate input file extension
-    input_ext = Path(args.image).suffix.lower()
-    if input_ext not in ['.jpg', '.jpeg', '.png', '.tiff', '.bmp']:
-        logger.error(f"Unsupported input image format: {input_ext}")
-        return False
-    
-    # Validate template file extension
-    if not args.template.endswith('.json'):
-        logger.error("Template file must be JSON format")
-        return False
-    
-    # Create output directory if it doesn't exist
-    output_dir = Path(args.output).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    return True
+class FieldItem(BaseModel):
+    id: str
+    name: str
+    text: str = ""
+    confidence: float = 0.0
+    bbox: Dict[str, Any] = Field(default_factory=dict)
 
 
-def main() -> int:
-    """
-    Main application entry point.
-    
-    Returns:
-        int: Exit code (0 for success, 1 for error)
-    """
-    parser = setup_arguments()
-    args = parser.parse_args()
-    
-    # Print header
-    print("=" * 70)
-    print("🔧 Auto Form Fill - OCR-based PDF Form Filling Tool")
-    print("=" * 70)
-    
-    start_time = time.time()
-    
-    try:
-        # Validate inputs
-        logger.info("Validating inputs...")
-        if not validate_inputs(args):
-            return 1
-        
-        logger.info(f"📁 Input image: {args.image}")
-        logger.info(f"📋 Template: {args.template}")
-        logger.info(f"💾 Output: {args.output}")
-        logger.info(f"🌐 Languages: {args.languages}")
-        
-        # Initialize database if not disabled
-        if not args.no_db:
-            logger.info("\n🔄 Step 1: Initializing database...")
-            try:
-                init_database()
-                logger.info("✅ Database initialized successfully")
-            except Exception as e:
-                logger.warning(f"⚠️  Database initialization failed: {e}")
-                logger.warning("Continuing without database storage...")
-                args.no_db = True
-        
-        # Step 2: Load template
-        logger.info("\n🔄 Step 2: Loading form template...")
-        form_filler = FormFiller()
-        template_data = form_filler.load_template(args.template)
-        logger.info("✅ Template loaded successfully")
-        
-        # Step 3: Initialize OCR
-        logger.info("\n🔄 Step 3: Initializing OCR engine...")
-        ocr_extractor = OCRExtractor(languages=args.languages, debug=args.debug)
-        logger.info("✅ OCR engine initialized")
-        
-        # Step 4: Extract data from image
-        logger.info("\n🔄 Step 4: Extracting data with OCR...")
-        extracted_data = ocr_extractor.extract_from_template(args.image, template_data)
-        logger.info(f"✅ Extracted {len(extracted_data)} fields")
-        
-        # Display extracted data summary
-        if args.debug:
-            logger.info("\n📊 Extracted Data Summary:")
-            for field_id, field_data in extracted_data.items():
-                logger.info(f"  • {field_data['name']}: '{field_data['text']}' "
-                          f"(confidence: {field_data['confidence']:.2f})")
-        
-        # Step 5: Validate extracted data
-        logger.info("\n🔄 Step 5: Validating extracted data...")
-        validation_result = form_filler.validate_extracted_data(extracted_data, template_data)
-        
-        if validation_result['errors']:
-            logger.warning("⚠️  Validation errors found:")
-            for error in validation_result['errors']:
-                logger.warning(f"  • {error}")
-        
-        if validation_result['warnings']:
-            logger.info("⚠️  Validation warnings:")
-            for warning in validation_result['warnings']:
-                logger.info(f"  • {warning}")
-        
-        if validation_result['valid']:
-            logger.info("✅ Validation passed")
-        
-        # Step 6: Save extracted data JSON
-        if args.data:
-            data_output_path = args.data
-        else:
-            data_output_path = str(Path(args.output).with_suffix('.json'))
-        
-        logger.info("\n🔄 Step 6: Saving extracted data...")
-        form_filler.save_extracted_json(extracted_data, data_output_path)
-        logger.info(f"✅ Extracted data saved to: {data_output_path}")
-        
-        # Step 7: Prepare data for PDF
-        logger.info("\n🔄 Step 7: Preparing data for PDF generation...")
-        pdf_data = form_filler.prepare_data_for_pdf(extracted_data, template_data)
-        logger.info(f"✅ Prepared {len(pdf_data)} fields for PDF")
-        
-        # Step 8: Generate filled PDF
-        logger.info("\n🔄 Step 8: Generating filled PDF...")
-        pdf_generator = PDFGenerator()
-        
-        # Use the image as template background
-        pdf_generator.create_filled_pdf_from_image(args.image, pdf_data, args.output)
-        logger.info(f"✅ Filled PDF generated: {args.output}")
-        
-        # Step 9: Save to database
-        if not args.no_db:
-            logger.info("\n🔄 Step 9: Saving to database...")
-            try:
-                # Get form name from template
-                form_name = template_data.get('forms', [{}])[0].get('name', 
-                           template_data.get('form', 'Unknown Form'))
-                
-                # Save to ocr_submissions table
-                from db import OCRSubmission
-                import json as json_module
-                
-                submission_id = OCRSubmission.create(
-                    form_name=form_name,
-                    extracted_data_json=json_module.dumps(extracted_data, ensure_ascii=False),
-                    input_file=args.image,
-                    output_file=args.output
+class OCRResponse(BaseModel):
+    template_id: str
+    form_name: str
+    image_path: str
+    fields: List[FieldItem]
+    validation: Dict[str, Any]
+
+
+class SubmitRequest(BaseModel):
+    template_id: str
+    form_name: str
+    image_path: str
+    fields: List[FieldItem]
+
+
+class SubmitResponse(BaseModel):
+    submission_id: int
+    pdf_path: str
+    download_url: str
+    validation: Dict[str, Any]
+
+
+class TemplateSummary(BaseModel):
+    id: str
+    name: str
+    form_type: Optional[str] = None
+    description: Optional[str] = None
+    image_filename: Optional[str] = None
+
+
+def _resolve_template_path(template_id: str) -> Path:
+    path = TEMPLATES_DIR / template_id
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+    return path
+
+
+def _load_template(template_id: str) -> Dict[str, Any]:
+    template_path = _resolve_template_path(template_id)
+    return form_filler.load_template(str(template_path))
+
+
+def _fields_dict_to_list(fields: Dict[str, Dict[str, Any]]) -> List[FieldItem]:
+    items: List[FieldItem] = []
+    for fid, data in fields.items():
+        items.append(
+            FieldItem(
+                id=fid,
+                name=data.get("name", fid),
+                text=data.get("text", ""),
+                confidence=float(data.get("confidence", 0.0)),
+                bbox=data.get("bbox", {}),
+            )
+        )
+    return items
+
+
+def _fields_list_to_dict(items: List[FieldItem]) -> Dict[str, Dict[str, Any]]:
+    return {
+        item.id: {
+            "name": item.name,
+            "text": item.text,
+            "confidence": float(item.confidence),
+            "bbox": item.bbox,
+        }
+        for item in items
+    }
+
+
+def _template_metadata(template: Dict[str, Any]) -> Dict[str, Any]:
+    if "forms" in template and template["forms"]:
+        return template["forms"][0]
+    return template
+
+
+def _template_image_path(template: Dict[str, Any]) -> Optional[Path]:
+    metadata = _template_metadata(template).get("metadata", {})
+    image_filename = metadata.get("image_filename")
+    if image_filename:
+        candidate = TEMPLATES_DIR / image_filename
+        if candidate.exists():
+            return candidate
+    return None
+
+
+@app.get("/health", tags=["system"])
+def health_check():
+    return {"status": "ok"}
+
+
+@app.get("/templates", response_model=List[TemplateSummary], tags=["templates"])
+def list_templates():
+    templates: List[TemplateSummary] = []
+    for path in sorted(TEMPLATES_DIR.glob("*.json")):
+        try:
+            data = form_filler.load_template(str(path))
+            meta = _template_metadata(data)
+            templates.append(
+                TemplateSummary(
+                    id=path.name,
+                    name=meta.get("name", path.stem),
+                    form_type=meta.get("form_type"),
+                    description=meta.get("description"),
+                    image_filename=meta.get("metadata", {}).get("image_filename"),
                 )
-                
-                logger.info(f"✅ Data saved to database (submission_id: {submission_id})")
-            except Exception as e:
-                logger.warning(f"⚠️  Failed to save to database: {e}")
-        
-        # Calculate total time
-        total_time = time.time() - start_time
-        
-        print("\n" + "=" * 70)
-        print(f"🎉 Process completed successfully in {total_time:.2f} seconds!")
-        print("=" * 70)
-        print(f"📄 Filled PDF: {args.output}")
-        print(f"📊 Extracted Data: {data_output_path}")
-        print("=" * 70)
-        
-        return 0
-        
-    except KeyboardInterrupt:
-        logger.warning("\n⚠️  Process interrupted by user")
-        return 1
-        
-    except Exception as e:
-        logger.error(f"\n❌ Error: {str(e)}")
-        if args.debug:
-            import traceback
-            traceback.print_exc()
-        return 1
+            )
+        except Exception as exc:
+            logger.warning("Failed to load template %s: %s", path.name, exc)
+    return templates
+
+
+@app.post("/ocr", response_model=OCRResponse, tags=["processing"])
+async def run_ocr(template_id: str = Form(...), file: UploadFile = File(...)):
+    template = _load_template(template_id)
+    metadata = _template_metadata(template)
+    form_name = metadata.get("name", template_id)
+
+    unique_name = f"{uuid4().hex}_{file.filename}"
+    image_path = UPLOAD_DIR / unique_name
+
+    logger.info("Saving uploaded image to %s", image_path)
+    contents = await file.read()
+    image_path.write_bytes(contents)
+
+    extractor = OCRExtractor(languages="nep+eng", debug=False)
+    extracted = extractor.extract_from_template(str(image_path), template)
+    validation = form_filler.validate_extracted_data(extracted, template)
+
+    return OCRResponse(
+        template_id=template_id,
+        form_name=form_name,
+        image_path=str(image_path),
+        fields=_fields_dict_to_list(extracted),
+        validation=validation,
+    )
+
+
+@app.post("/submit", response_model=SubmitResponse, tags=["processing"])
+def submit_form(payload: SubmitRequest):
+    template = _load_template(payload.template_id)
+    extracted_dict = _fields_list_to_dict(payload.fields)
+
+    validation = form_filler.validate_extracted_data(extracted_dict, template)
+    pdf_data = form_filler.prepare_data_for_pdf(extracted_dict, template)
+
+    template_image = _template_image_path(template)
+    background_image = template_image or Path(payload.image_path)
+
+    if not Path(payload.image_path).exists():
+        raise HTTPException(status_code=400, detail="Uploaded image not found on server")
+
+    pdf_path = OUTPUT_DIR / f"{uuid4().hex}.pdf"
+    logger.info("Generating filled PDF at %s", pdf_path)
+
+    pdf_generator.create_filled_pdf_from_image(
+        str(background_image),
+        pdf_data,
+        str(pdf_path),
+    )
+
+    with get_session() as session:
+        submission = FormSubmission(
+            form_name=payload.form_name,
+            template_id=payload.template_id,
+            image_path=payload.image_path,
+            pdf_path=str(pdf_path),
+            fields_json=json.dumps(extracted_dict, ensure_ascii=False),
+            validation_json=json.dumps(validation, ensure_ascii=False),
+        )
+        session.add(submission)
+        session.flush()
+        submission_id = submission.id
+
+    download_url = f"/submissions/{submission_id}/pdf"
+
+    return SubmitResponse(
+        submission_id=submission_id,
+        pdf_path=str(pdf_path),
+        download_url=download_url,
+        validation=validation,
+    )
+
+
+@app.get("/submissions", tags=["submissions"])
+def list_submissions(limit: int = 20):
+    with get_session() as session:
+        records = (
+            session.query(FormSubmission)
+            .order_by(FormSubmission.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [record.to_dict() for record in records]
+
+
+@app.get("/submissions/{submission_id}", tags=["submissions"])
+def get_submission(submission_id: int):
+    with get_session() as session:
+        record = session.get(FormSubmission, submission_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Submission not found")
+        return record.to_dict()
+
+
+@app.get("/submissions/{submission_id}/pdf", response_class=FileResponse, tags=["submissions"])
+def download_pdf(submission_id: int):
+    with get_session() as session:
+        record = session.get(FormSubmission, submission_id)
+        if record is None or not record.pdf_path:
+            raise HTTPException(status_code=404, detail="PDF not found")
+
+        pdf_path = Path(record.pdf_path)
+        if not pdf_path.exists():
+            raise HTTPException(status_code=404, detail="PDF file missing on server")
+
+    return FileResponse(path=pdf_path, filename=pdf_path.name, media_type="application/pdf")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(_request, exc):  # type: ignore[override]
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

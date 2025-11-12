@@ -83,3 +83,10 @@ agenthub/agents/youtube/db
 
 # Mobile development
 android-sdk/ 
+# Auto Form Fill artifacts
+output/demo/
+output/tests/
+output/demo_filled.*
+data/autoformfill.db
+templates/*.ocr.json
+logs/
