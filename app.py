@@ -71,7 +71,7 @@ with st.sidebar:
     )
 
     if st.button("📄 Refresh Templates"):
-        st.experimental_rerun()
+        st.rerun()
 
 if not template_options:
     st.warning("No templates found. Place JSON templates inside the `templates/` directory.")

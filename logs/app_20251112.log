@@ -117,3 +117,13 @@
 2025-11-12 20:11:48 - printer.pdf_generator - INFO - [pdf_generator.py:38] - Creating filled PDF from template image: /home/npc/YO/templates/business_front.jpg
 2025-11-12 20:11:48 - printer.pdf_generator - INFO - [pdf_generator.py:59] - Filled PDF created successfully: /home/npc/YO/output/tests/smoke_test.pdf
 2025-11-12 20:11:48 - smoke_test - INFO - [smoke_test.py:98] - ✅ End-to-end pipeline successful. Output: /home/npc/YO/output/tests/smoke_test.pdf (359963 bytes)
+2025-11-12 21:27:02 - ocr.extractor - INFO - [extractor.py:19] - Using bundled tessdata directory: /home/npc/YO/tessdata
+2025-11-12 21:27:02 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 21:27:02 - db.connection - INFO - [connection.py:83] - Ensuring database tables exist
+2025-11-12 21:27:04 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 21:27:04 - db.connection - INFO - [connection.py:83] - Ensuring database tables exist
+2025-11-12 21:47:21 - ocr.extractor - INFO - [extractor.py:19] - Using bundled tessdata directory: /home/npc/YO/tessdata
+2025-11-12 21:47:21 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 21:47:21 - db.connection - INFO - [connection.py:83] - Ensuring database tables exist
+2025-11-12 21:47:21 - printer.pdf_generator - INFO - [pdf_generator.py:25] - PDF Generator initialized
+2025-11-12 21:47:21 - db.connection - INFO - [connection.py:83] - Ensuring database tables exist
