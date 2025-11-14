@@ -1,9 +1,10 @@
 """Form filling logic for mapping OCR data to form fields."""
 
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 from utils.logger import get_logger
+from .field_matcher import FieldMatcher
 
 logger = get_logger(__name__)
 
@@ -11,9 +12,16 @@ logger = get_logger(__name__)
 class FormFiller:
     """Handles form filling operations and data mapping."""
     
-    def __init__(self):
-        """Initialize form filler."""
-        pass
+    def __init__(self, field_matcher: Optional[FieldMatcher] = None):
+        """
+        Initialize form filler.
+        
+        Args:
+            field_matcher: Optional FieldMatcher instance for semantic matching.
+                          If None, creates a default one.
+        """
+        self.field_matcher = field_matcher or FieldMatcher(confidence_threshold=0.5, debug=False)
+        logger.info("FormFiller initialized with semantic field matching capability")
     
     def load_template(self, template_path: str) -> Dict[str, Any]:
         """
@@ -181,3 +189,76 @@ class FormFiller:
         except Exception as e:
             logger.error(f"Failed to save extracted data: {e}")
             raise
+    
+    def match_ocr_to_template_semantically(
+        self,
+        ocr_result: Dict[str, Any],
+        template: Dict[str, Any],
+        save_mapping: Optional[str] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Use semantic field matching to map OCR text to template fields.
+        
+        This method is useful when:
+        - Extracting from ID cards or documents without predefined bbox regions
+        - OCR extracts text like "नाम : हसन गाहा" that needs to map to template fields
+        
+        Args:
+            ocr_result: Full OCR result from extract_from_image() with 'lines' key
+            template: Template dict with field definitions
+            save_mapping: Optional path to save the matched mapping JSON
+            
+        Returns:
+            Dict mapping field_id to matched data {name, text, confidence, bbox, match_score}
+        """
+        logger.info("Starting semantic field matching process")
+        
+        matched_data = self.field_matcher.match_from_full_ocr(ocr_result, template)
+        
+        # Save mapping if requested
+        if save_mapping:
+            try:
+                Path(save_mapping).parent.mkdir(parents=True, exist_ok=True)
+                with open(save_mapping, 'w', encoding='utf-8') as f:
+                    json.dump(matched_data, f, indent=2, ensure_ascii=False)
+                logger.info(f"Saved semantic mapping to: {save_mapping}")
+            except Exception as e:
+                logger.warning(f"Failed to save mapping: {e}")
+        
+        return matched_data
+    
+    def extract_and_match_semantically(
+        self,
+        image_path: str,
+        template: Dict[str, Any],
+        ocr_extractor: Any,
+        save_mapping: Optional[str] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Extract OCR from image and semantically match to template fields.
+        
+        This is a convenience method that combines OCR extraction with semantic matching.
+        Useful for processing ID cards or documents where bbox-based extraction isn't suitable.
+        
+        Args:
+            image_path: Path to input image
+            template: Template dict with field definitions
+            ocr_extractor: OCRExtractor instance
+            save_mapping: Optional path to save the matched mapping JSON
+            
+        Returns:
+            Dict mapping field_id to matched data
+        """
+        logger.info(f"Extracting OCR from image and matching semantically: {image_path}")
+        
+        # Extract full OCR from image
+        ocr_result = ocr_extractor.extract_from_image(image_path, save_raw=False)
+        
+        # Match semantically
+        matched_data = self.match_ocr_to_template_semantically(
+            ocr_result,
+            template,
+            save_mapping=save_mapping
+        )
+        
+        return matched_data

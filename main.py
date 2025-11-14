@@ -168,7 +168,23 @@ def list_templates():
 
 
 @app.post("/ocr", response_model=OCRResponse, tags=["processing"])
-async def run_ocr(template_id: str = Form(...), file: UploadFile = File(...)):
+async def run_ocr(
+    template_id: str = Form(...),
+    file: UploadFile = File(...),
+    use_semantic_matching: str = Form("false")
+):
+    """
+    Run OCR on uploaded image and extract fields.
+    
+    Args:
+        template_id: Template identifier
+        file: Uploaded image file
+        use_semantic_matching: "true" or "false" string to enable semantic field matching.
+                              Useful for ID cards or documents without predefined regions.
+    
+    Returns:
+        OCRResponse with extracted fields
+    """
     template = _load_template(template_id)
     metadata = _template_metadata(template)
     form_name = metadata.get("name", template_id)
@@ -181,7 +197,24 @@ async def run_ocr(template_id: str = Form(...), file: UploadFile = File(...)):
     image_path.write_bytes(contents)
 
     extractor = OCRExtractor(languages="nep+eng", debug=False)
-    extracted = extractor.extract_from_template(str(image_path), template)
+    
+    # Convert string to boolean
+    use_semantic = use_semantic_matching.lower() in ("true", "1", "yes", "on")
+    
+    if use_semantic:
+        logger.info("Using semantic field matching mode")
+        # Use semantic matching for ID cards or unstructured documents
+        extracted = form_filler.extract_and_match_semantically(
+            str(image_path),
+            template,
+            extractor,
+            save_mapping=str(OUTPUT_DIR / f"{unique_name}_mapping.json")
+        )
+    else:
+        logger.info("Using bbox-based template extraction mode")
+        # Use traditional bbox-based extraction
+        extracted = extractor.extract_from_template(str(image_path), template)
+    
     validation = form_filler.validate_extracted_data(extracted, template)
 
     return OCRResponse(

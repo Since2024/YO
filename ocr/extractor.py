@@ -177,6 +177,29 @@ class TesseractExtractor:
         if img is None:
             raise FileNotFoundError(f"Image not found: {image_path}")
 
+        # Scale image to match template dimensions if metadata available
+        metadata = {}
+        if "forms" in template and template["forms"]:
+            metadata = template["forms"][0].get("metadata", {})
+        elif "metadata" in template:
+            metadata = template["metadata"]
+        
+        template_dims = metadata.get("image_dimensions_px", {})
+        if template_dims:
+            template_w = template_dims.get("width")
+            template_h = template_dims.get("height")
+            
+            if template_w and template_h:
+                img_h, img_w = img.shape[:2]
+                if img_w != template_w or img_h != template_h:
+                    logger.info(
+                        f"📏 Resizing image from {img_w}x{img_h} to {template_w}x{template_h} "
+                        f"to match template dimensions"
+                    )
+                    img = cv2.resize(img, (template_w, template_h), interpolation=cv2.INTER_LINEAR)
+                else:
+                    logger.debug(f"✅ Image dimensions match template: {img_w}x{img_h}")
+
         extracted = {}
 
         for field in fields:
@@ -197,43 +220,131 @@ class TesseractExtractor:
                 logger.warning(f"⚠️ Skipping field '{name}' — invalid bbox dimensions.")
                 continue
 
-            # Preprocess region
+            # Enhanced preprocessing for field regions
             gray_region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-            denoised_region = cv2.fastNlMeansDenoising(gray_region, None, 10, 7, 21)
+            
+            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) for better contrast
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(gray_region)
+            
+            # Denoise
+            denoised_region = cv2.fastNlMeansDenoising(enhanced, None, 10, 7, 21)
             
             # Get OCR config from field if available
             ocr_config = field.get("ocr", {})
             psm = ocr_config.get("psm", 7)  # Default PSM 7 for single text line
             lang = ocr_config.get("lang", self.languages)
+            whitelist = ocr_config.get("whitelist")
             
-            # Convert to PIL Image
-            pil_region = Image.fromarray(denoised_region)
+            # Try multiple preprocessing strategies
+            preprocessed_regions = []
             
-            # Run OCR on cropped field
-            try:
-                ocr_result = pytesseract.image_to_string(
-                    pil_region,
-                    lang=lang,
-                    config=f'--psm {psm}'
-                )
-                text = ocr_result.strip()
+            # Strategy 1: Otsu threshold (usually best for varying contrast)
+            _, thresh_otsu = cv2.threshold(denoised_region, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            preprocessed_regions.append(("otsu", thresh_otsu))
+            
+            # Strategy 2: Adaptive threshold (for high contrast)
+            thresh_adaptive = cv2.adaptiveThreshold(
+                denoised_region, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            preprocessed_regions.append(("adaptive", thresh_adaptive))
+            
+            # Strategy 3: Original denoised (for light backgrounds)
+            preprocessed_regions.append(("denoised", denoised_region))
+            
+            # Try OCR with multiple strategies
+            text = ""
+            conf = 0.0
+            best_strategy = None
+            
+            # Build OCR strategies to try
+            ocr_strategies = [
+                {"psm": psm, "lang": lang, "whitelist": whitelist},
+            ]
+            
+            # Add alternative PSM if different
+            if psm != 8:
+                ocr_strategies.append({"psm": 8, "lang": lang, "whitelist": whitelist})
+            if psm != 7:
+                ocr_strategies.append({"psm": 7, "lang": lang, "whitelist": whitelist})
+            
+            # Try both languages if only one specified
+            if lang != "nep+eng":
+                ocr_strategies.append({"psm": psm, "lang": "nep+eng", "whitelist": whitelist})
+            
+            # Try each preprocessing strategy with each OCR strategy
+            for prep_name, preprocessed_region in preprocessed_regions:
+                pil_region = Image.fromarray(preprocessed_region)
                 
-                # Get confidence score
-                ocr_data = pytesseract.image_to_data(
-                    pil_region,
-                    lang=lang,
-                    output_type=pytesseract.Output.DICT,
-                    config=f'--psm {psm}'
-                )
-                
-                # Calculate average confidence
-                confidences = [float(c) for c in ocr_data['conf'] if c != -1]
-                conf = float(np.mean(confidences) / 100.0) if confidences else 0.0
-                
-            except Exception as e:
-                logger.warning(f"⚠️ OCR failed for field '{name}': {e}")
-                text = ""
-                conf = 0.0
+                for strategy in ocr_strategies:
+                    try:
+                        # Build config string
+                        config_parts = [f"--psm {strategy['psm']}", "--oem 3"]
+                        if strategy.get("whitelist"):
+                            config_parts.append(f"-c tessedit_char_whitelist={strategy['whitelist']}")
+                        config_str = " ".join(config_parts)
+                        
+                        ocr_result = pytesseract.image_to_string(
+                            pil_region,
+                            lang=strategy["lang"],
+                            config=config_str
+                        )
+                        test_text = ocr_result.strip()
+                        
+                        if test_text:
+                            # Get confidence for this strategy
+                            ocr_data = pytesseract.image_to_data(
+                                pil_region,
+                                lang=strategy["lang"],
+                                output_type=pytesseract.Output.DICT,
+                                config=config_str
+                            )
+                            confidences = [float(c) for c in ocr_data['conf'] if c != -1]
+                            test_conf = float(np.mean(confidences) / 100.0) if confidences else 0.0
+                            
+                            # Use this result if it's better (longer text or higher confidence)
+                            if len(test_text) > len(text) or (len(test_text) == len(text) and test_conf > conf):
+                                text = test_text
+                                conf = test_conf
+                                best_strategy = f"{prep_name}+psm{strategy['psm']}+{strategy['lang']}"
+                    except Exception as e:
+                        if self.debug:
+                            logger.debug(f"Strategy {prep_name}+psm{strategy['psm']} failed: {e}")
+                        continue
+            
+            # Last resort: try with original gray region (no preprocessing)
+            if not text:
+                try:
+                    pil_region = Image.fromarray(gray_region)
+                    config_str = f"--psm {psm} --oem 3"
+                    if whitelist:
+                        config_str += f" -c tessedit_char_whitelist={whitelist}"
+                    
+                    ocr_result = pytesseract.image_to_string(
+                        pil_region,
+                        lang=lang,
+                        config=config_str
+                    )
+                    text = ocr_result.strip()
+                    
+                    if text:
+                        ocr_data = pytesseract.image_to_data(
+                            pil_region,
+                            lang=lang,
+                            output_type=pytesseract.Output.DICT,
+                            config=config_str
+                        )
+                        confidences = [float(c) for c in ocr_data['conf'] if c != -1]
+                        conf = float(np.mean(confidences) / 100.0) if confidences else 0.0
+                        best_strategy = "original_gray"
+                except Exception as e:
+                    logger.debug(f"Last resort OCR failed for field '{name}': {e}")
+            
+            if self.debug and best_strategy:
+                logger.debug(f"Field '{name}' best strategy: {best_strategy}")
+            
+            if not text:
+                logger.warning(f"⚠️ No text extracted for field '{name}'")
 
             extracted[fid] = {
                 "name": name,

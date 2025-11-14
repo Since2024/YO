@@ -24,11 +24,14 @@ def fetch_templates(api_url: str) -> List[Dict]:
         return []
 
 
-def run_ocr(api_url: str, template_id: str, uploaded_file) -> Dict:
+def run_ocr(api_url: str, template_id: str, uploaded_file, use_semantic_matching: bool = False) -> Dict:
     files = {
         "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type or "image/jpeg")
     }
-    data = {"template_id": template_id}
+    data = {
+        "template_id": template_id,
+        "use_semantic_matching": str(use_semantic_matching).lower()
+    }
     response = requests.post(f"{api_url}/ocr", data=data, files=files, timeout=60)
     response.raise_for_status()
     return response.json()
@@ -84,23 +87,32 @@ form_name = selected_template_name or template_id
 
 st.subheader("1. Upload Form Image")
 uploaded_file = st.file_uploader(
-    "Drag & drop a scanned form (JPG/PNG)",
+    "Drag & drop a scanned form or ID card (JPG/PNG)",
     type=["jpg", "jpeg", "png", "tif", "tiff", "bmp"],
 )
 
 if uploaded_file:
     st.image(uploaded_file, caption="Uploaded image", use_column_width=True)
+    
+    # Semantic matching option
+    use_semantic = st.checkbox(
+        "🧠 Use Semantic Field Matching",
+        value=False,
+        help="Enable this for ID cards or documents without predefined regions. "
+             "The system will intelligently match OCR text to template fields."
+    )
 
     if st.button("🔍 Run OCR", type="primary"):
         with st.spinner("Running OCR..."):
             try:
-                ocr_result = run_ocr(backend_url, template_id, uploaded_file)
+                ocr_result = run_ocr(backend_url, template_id, uploaded_file, use_semantic_matching=use_semantic)
                 st.session_state.ocr_result = ocr_result
                 st.session_state.edited_fields = {
                     field["id"]: field.get("text", "") for field in ocr_result["fields"]
                 }
                 st.session_state.last_submission = None
-                st.success("OCR completed. Review and edit below.")
+                mode_text = "semantic matching" if use_semantic else "bbox-based extraction"
+                st.success(f"OCR completed using {mode_text}. Review and edit below.")
             except Exception as exc:
                 st.error(f"OCR failed: {exc}")
 

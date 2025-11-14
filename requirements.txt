@@ -22,3 +22,6 @@ reportlab>=4.0.0
 
 # Configuration
 python-dotenv>=1.0.0
+
+# Fuzzy String Matching
+rapidfuzz>=3.0.0
