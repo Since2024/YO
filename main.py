@@ -196,7 +196,17 @@ async def run_ocr(
     contents = await file.read()
     image_path.write_bytes(contents)
 
-    extractor = OCRExtractor(languages="nep+eng", debug=False)
+    # Use PaddleOCR by default for better Nepali support
+    # Can fallback to Tesseract if needed
+    try:
+        from ocr.paddle_extractor import PaddleOCRExtractor
+        extractor = PaddleOCRExtractor(languages="hi", use_gpu=False, debug=False)
+        logger.info("Using PaddleOCR for extraction (better Nepali/Devanagari support)")
+    except Exception as e:
+        logger.warning(f"PaddleOCR not available, falling back to Tesseract: {e}")
+        from ocr.extractor import TesseractExtractor
+        extractor = TesseractExtractor(languages="nep+eng", debug=False)
+        logger.info("Using Tesseract OCR for extraction")
     
     # Convert string to boolean
     use_semantic = use_semantic_matching.lower() in ("true", "1", "yes", "on")

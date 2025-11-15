@@ -25,3 +25,7 @@ python-dotenv>=1.0.0
 
 # Fuzzy String Matching
 rapidfuzz>=3.0.0
+
+# Better OCR Engine (for Nepali/Devanagari)
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0

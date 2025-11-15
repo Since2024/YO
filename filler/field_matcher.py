@@ -106,12 +106,12 @@ class FieldMatcher:
         },
     }
     
-    def __init__(self, confidence_threshold: float = 0.5, debug: bool = False):
+    def __init__(self, confidence_threshold: float = 0.7, debug: bool = False):
         """
         Initialize field matcher.
         
         Args:
-            confidence_threshold: Minimum fuzzy match score (0-1) to accept a match (lowered to 0.5 for better matching)
+            confidence_threshold: Minimum fuzzy match score (0-1) to accept a match (default 0.7 for accuracy)
             debug: Enable debug logging for mapping decisions
         """
         self.confidence_threshold = confidence_threshold

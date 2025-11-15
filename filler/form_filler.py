@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 from utils.logger import get_logger
 from .field_matcher import FieldMatcher
+from .validators import FieldValidator
 
 logger = get_logger(__name__)
 
@@ -20,7 +21,7 @@ class FormFiller:
             field_matcher: Optional FieldMatcher instance for semantic matching.
                           If None, creates a default one.
         """
-        self.field_matcher = field_matcher or FieldMatcher(confidence_threshold=0.5, debug=False)
+        self.field_matcher = field_matcher or FieldMatcher(confidence_threshold=0.7, debug=False)
         logger.info("FormFiller initialized with semantic field matching capability")
     
     def load_template(self, template_path: str) -> Dict[str, Any]:
@@ -112,6 +113,23 @@ class FormFiller:
                     validation_results['warnings'].append(
                         f"Field '{field_name}' length mismatch. Expected {expected_len}, got {actual_len}"
                     )
+            
+            # Format validation using FieldValidator
+            field_type = validation.get('type', field.get('type', 'string'))
+            if field_type in ['date', 'phone', 'mobile', 'citizenship', 'pan', 'email', 'number', 'numeric']:
+                # Create a copy for validation
+                field_copy = field_data.copy()
+                field_copy['validate'] = validation
+                validated = FieldValidator.validate_field(field_copy, field_type)
+                
+                if not validated.get('valid', True):
+                    validation_results['warnings'].append(
+                        f"Field '{field_name}' format validation failed (type: {field_type})"
+                    )
+                elif validated.get('normalized') and validated['normalized'] != text:
+                    # Update with normalized value
+                    extracted_data[field_id]['text'] = validated['normalized']
+                    logger.debug(f"Normalized field '{field_name}': '{text}' → '{validated['normalized']}'")
         
         if validation_results['valid']:
             logger.info("Validation passed")
