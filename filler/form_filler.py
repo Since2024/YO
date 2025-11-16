@@ -48,13 +48,15 @@ class FormFiller:
             raise
     
     def validate_extracted_data(self, extracted_data: Dict[str, Any], 
-                               template: Dict[str, Any]) -> Dict[str, Any]:
+                               template: Dict[str, Any],
+                               confidence_threshold: float = 0.7) -> Dict[str, Any]:
         """
         Validate extracted data against template validation rules.
         
         Args:
             extracted_data: Extracted OCR data
             template: Form template with validation rules
+            confidence_threshold: Minimum confidence threshold for auto-approval (default 0.7)
             
         Returns:
             Dict containing validation results
@@ -83,6 +85,15 @@ class FormFiller:
                 validation_results['warnings'].append(
                     f"Field '{field_name}' not found in extracted data"
                 )
+                # Mark for review if required
+                if field.get('validate', {}).get('req', False):
+                    extracted_data[field_id] = {
+                        'name': field_name,
+                        'text': '',
+                        'confidence': 0.0,
+                        'bbox': field.get('bbox', {}),
+                        'needs_review': True
+                    }
                 continue
             
             field_data = extracted_data[field_id]
@@ -92,18 +103,24 @@ class FormFiller:
             # Check validation rules
             validation = field.get('validate', {})
             
+            # Determine if field needs review
+            needs_review = False
+            
             # Required field check
             if validation.get('req', False) and not text:
                 validation_results['valid'] = False
                 validation_results['errors'].append(
                     f"Required field '{field_name}' is empty"
                 )
+                needs_review = True
             
-            # Low confidence warning
-            if confidence < 0.7 and text:
-                validation_results['warnings'].append(
-                    f"Field '{field_name}' has low confidence: {confidence:.2f}"
-                )
+            # Low confidence flag
+            if confidence < confidence_threshold:
+                if text:
+                    validation_results['warnings'].append(
+                        f"Field '{field_name}' has low confidence: {confidence:.2f}"
+                    )
+                needs_review = True
             
             # Length validation
             if 'len' in validation and text:
@@ -113,6 +130,7 @@ class FormFiller:
                     validation_results['warnings'].append(
                         f"Field '{field_name}' length mismatch. Expected {expected_len}, got {actual_len}"
                     )
+                    needs_review = True
             
             # Format validation using FieldValidator
             field_type = validation.get('type', field.get('type', 'string'))
@@ -126,10 +144,14 @@ class FormFiller:
                     validation_results['warnings'].append(
                         f"Field '{field_name}' format validation failed (type: {field_type})"
                     )
+                    needs_review = True
                 elif validated.get('normalized') and validated['normalized'] != text:
                     # Update with normalized value
                     extracted_data[field_id]['text'] = validated['normalized']
                     logger.debug(f"Normalized field '{field_name}': '{text}' → '{validated['normalized']}'")
+            
+            # Set needs_review flag
+            extracted_data[field_id]['needs_review'] = needs_review
         
         if validation_results['valid']:
             logger.info("Validation passed")
@@ -144,14 +166,14 @@ class FormFiller:
     def prepare_data_for_pdf(self, extracted_data: Dict[str, Any], 
                             template: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Prepare extracted data for PDF generation.
+        Prepare extracted data for PDF generation with support for table rows and box_grid.
         
         Args:
             extracted_data: Extracted OCR data
             template: Form template
             
         Returns:
-            List of field data ready for PDF generation
+            List of field data ready for PDF generation with rendering metadata
         """
         logger.info("Preparing data for PDF generation")
         
@@ -175,10 +197,28 @@ class FormFiller:
                     'name': field.get('name', field_id),
                     'text': field_data.get('text', ''),
                     'bbox': field.get('bbox', {}),
-                    'type': field.get('type', 'text'),
+                    'type': field.get('type', 'text_line'),
                     'page': field.get('page', 1),
-                    'confidence': field_data.get('confidence', 0.0)
+                    'confidence': field_data.get('confidence', 0.0),
+                    'needs_review': field_data.get('needs_review', False)
                 }
+                
+                # Add box_grid metadata if present
+                if field.get('type') == 'box_grid' and 'grid' in field:
+                    pdf_field['grid'] = field['grid']
+                    pdf_field['rendering'] = 'box_grid'
+                
+                # Add table metadata if present
+                elif field.get('type') == 'table' and 'table' in field:
+                    pdf_field['table'] = field['table']
+                    pdf_field['rendering'] = 'table'
+                    # Support for table rows
+                    if 'rows' in field_data:
+                        pdf_field['rows'] = field_data['rows']
+                
+                # Add rendering metadata for other types
+                else:
+                    pdf_field['rendering'] = 'text'
                 
                 pdf_data.append(pdf_field)
         

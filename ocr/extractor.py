@@ -375,8 +375,120 @@ class TesseractExtractor:
         return self.extract_fields(image_path, template)
 
 
-# Alias for backward compatibility
-OCRExtractor = TesseractExtractor
+class OCRExtractor:
+    """
+    Unified OCR extractor that tries PaddleOCR first, falls back to Tesseract.
+    
+    This class provides a consistent interface regardless of which OCR engine is available.
+    """
+    
+    def __init__(self, languages: str = "nep+eng", use_gpu: bool = False, debug: bool = False):
+        """
+        Initialize OCR extractor with automatic engine selection.
+        
+        Args:
+            languages: Language codes ("nep+eng", "hi", "en", etc.)
+            use_gpu: Whether to use GPU (for PaddleOCR)
+            debug: Enable debug mode
+        """
+        self.languages = languages
+        self.use_gpu = use_gpu
+        self.debug = debug
+        self.engine_name = None
+        self.extractor = None
+        
+        # Try PaddleOCR first
+        try:
+            from ocr.paddle_extractor import PaddleOCRExtractor
+            # Map language codes
+            lang_map = {
+                "nep": "hi",
+                "nep+eng": "hi+en",
+                "eng": "en",
+                "hi": "hi",
+                "en": "en"
+            }
+            paddle_lang = lang_map.get(languages, "hi")
+            self.extractor = PaddleOCRExtractor(languages=paddle_lang, use_gpu=use_gpu, debug=debug)
+            self.engine_name = "paddleocr"
+            logger.info("✅ Using PaddleOCR for extraction (better Nepali/Devanagari support)")
+        except Exception as e:
+            logger.warning(f"PaddleOCR not available ({e}), falling back to Tesseract")
+            logger.info("💡 To use PaddleOCR, install: pip install paddleocr paddlepaddle")
+            # Fallback to Tesseract
+            try:
+                self.extractor = TesseractExtractor(languages=languages, debug=debug)
+                self.engine_name = "tesseract"
+                logger.info("✅ Using Tesseract OCR for extraction")
+            except Exception as e2:
+                logger.error(f"Tesseract OCR also failed: {e2}")
+                logger.error("Please install Tesseract: sudo pacman -S tesseract tesseract-data-nep")
+                raise RuntimeError("No OCR engine available. Install PaddleOCR or Tesseract.")
+    
+    def extract_from_image(self, image_path: str, save_raw: bool = True) -> Dict[str, Any]:
+        """Extract all text from image."""
+        if self.engine_name == "paddleocr":
+            return self.extractor.extract_full_text(image_path)
+        else:
+            return self.extractor.extract_from_image(image_path, save_raw=save_raw)
+    
+    def extract_fields(self, image_path: str, template: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract fields from template."""
+        return self.extractor.extract_fields(image_path, template)
+    
+    def extract_from_template(self, image_path: str, template: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract fields from template (compatibility method)."""
+        return self.extract_fields(image_path, template)
+    
+    def extract_full_text(self, image_path: str) -> Dict[str, Any]:
+        """Extract full text (raw OCR result)."""
+        if self.engine_name == "paddleocr":
+            return self.extractor.extract_full_text(image_path)
+        else:
+            return self.extractor.extract_from_image(image_path, save_raw=True)
+    
+    def extract_field_bbox(self, image_path: str, bbox_px: List[int]) -> Dict[str, Any]:
+        """Extract text from a specific bounding box."""
+        if self.engine_name == "paddleocr":
+            return self.extractor.extract_field_bbox(image_path, bbox_px)
+        else:
+            # Tesseract fallback - crop and extract
+            img = cv2.imread(image_path)
+            if img is None:
+                raise FileNotFoundError(f"Image not found: {image_path}")
+            x, y, w, h = map(int, bbox_px)
+            region = img[y:y+h, x:x+w]
+            if region.size == 0:
+                return {
+                    "text": "",
+                    "confidence": 0.0,
+                    "bbox_px": bbox_px,
+                    "bbox_mm": None,
+                    "ocr_engine": "tesseract"
+                }
+            # Save temp image and run OCR
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                cv2.imwrite(tmp.name, region)
+                result = self.extractor.extract_from_image(tmp.name, save_raw=False)
+                os.unlink(tmp.name)
+                text = result.get("full_text", "")
+                confidences = [line.get("confidence", 0.0) for line in result.get("lines", [])]
+                conf = float(np.mean(confidences)) if confidences else 0.0
+                dpi = 300
+                bbox_mm = [
+                    round(bbox_px[0] * 25.4 / dpi, 2),
+                    round(bbox_px[1] * 25.4 / dpi, 2),
+                    round(bbox_px[2] * 25.4 / dpi, 2),
+                    round(bbox_px[3] * 25.4 / dpi, 2)
+                ]
+                return {
+                    "text": text,
+                    "confidence": round(conf, 3),
+                    "bbox_px": bbox_px,
+                    "bbox_mm": bbox_mm,
+                    "ocr_engine": "tesseract"
+                }
 
 
 if __name__ == "__main__":

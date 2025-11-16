@@ -133,4 +133,3 @@ MIT – see `LICENSE` if included.
 
 ---
 
-**Ready for the Friday demo:** start the FastAPI server, launch Streamlit, upload a form, confirm OCR values, and export the filled PDF – all offline on Linux.

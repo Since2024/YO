@@ -48,18 +48,17 @@ class PaddleOCRExtractor:
             logger.error(f"Failed to initialize PaddleOCR: {e}")
             raise
     
-    def extract_from_image(self, image_path: str, save_raw: bool = True) -> Dict[str, Any]:
+    def extract_full_text(self, image_path: str) -> Dict[str, Any]:
         """
-        Extract all detected text lines from an image.
+        Extract full text from image (raw OCR result).
         
         Args:
             image_path: Path to input image
-            save_raw: Whether to save raw OCR JSON output
             
         Returns:
-            Dict with extracted text lines, confidence, and bbox
+            Dict with extracted text lines, confidence, bbox, and ocr_engine
         """
-        logger.info(f"🖼️ Running PaddleOCR on {image_path}")
+        logger.info(f"🖼️ Running PaddleOCR full text extraction on {image_path}")
         
         try:
             # Preprocess image (deskew, enhance)
@@ -110,15 +109,19 @@ class PaddleOCRExtractor:
                 "image": image_path,
                 "total_lines": len(lines),
                 "lines": lines,
-                "full_text": " ".join([l["text"] for l in lines])
+                "full_text": " ".join([l["text"] for l in lines]),
+                "ocr_engine": "paddleocr"
             }
             
-            if save_raw:
-                out_path = Path(image_path).with_suffix(".paddle_ocr.json")
-                out_path.parent.mkdir(parents=True, exist_ok=True)
+            # Save raw OCR JSON when debug mode is on
+            if self.debug:
+                output_dir = Path("output/raw")
+                output_dir.mkdir(parents=True, exist_ok=True)
+                image_basename = Path(image_path).stem
+                out_path = output_dir / f"{image_basename}.ocr.json"
                 with open(out_path, "w", encoding="utf-8") as f:
                     json.dump(output, f, ensure_ascii=False, indent=2)
-                logger.info(f"💾 Saved PaddleOCR result to: {out_path}")
+                logger.info(f"💾 Saved raw OCR result to: {out_path}")
             
             logger.info(f"✅ Extracted {len(lines)} text lines with PaddleOCR")
             return output
@@ -126,6 +129,104 @@ class PaddleOCRExtractor:
         except Exception as e:
             logger.error(f"PaddleOCR extraction failed: {e}")
             raise
+    
+    def extract_field_bbox(self, image_path: str, bbox_px: List[int]) -> Dict[str, Any]:
+        """
+        Extract text and confidence for a given bounding box.
+        
+        Args:
+            image_path: Path to input image
+            bbox_px: Bounding box as [x, y, width, height] in pixels
+            
+        Returns:
+            Dict with text, confidence, bbox_px, bbox_mm, ocr_engine
+        """
+        logger.debug(f"Extracting text from bbox {bbox_px} in {image_path}")
+        
+        try:
+            img = cv2.imread(image_path)
+            if img is None:
+                raise FileNotFoundError(f"Image not found: {image_path}")
+            
+            x, y, w, h = map(int, bbox_px)
+            
+            # Crop field region
+            region = img[y:y+h, x:x+w]
+            
+            if region.size == 0:
+                return {
+                    "text": "",
+                    "confidence": 0.0,
+                    "bbox_px": bbox_px,
+                    "bbox_mm": None,
+                    "ocr_engine": "paddleocr"
+                }
+            
+            # Preprocess region
+            processed_region = preprocess_image(region)
+            
+            # Run PaddleOCR on cropped region
+            result = self.ocr.ocr(processed_region, cls=True)
+            
+            # Extract text and confidence
+            text = ""
+            conf = 0.0
+            
+            if result and result[0]:
+                texts = []
+                confidences = []
+                for line in result[0]:
+                    if line and line[1]:
+                        line_text = line[1][0] if isinstance(line[1], (list, tuple)) else line[1]
+                        line_conf = line[1][1] if isinstance(line[1], (list, tuple)) and len(line[1]) > 1 else 0.8
+                        
+                        if line_text:
+                            texts.append(line_text.strip())
+                            confidences.append(float(line_conf))
+                
+                if texts:
+                    text = " ".join(texts)
+                    conf = float(np.mean(confidences)) if confidences else 0.0
+            
+            # Convert bbox to mm (assuming 300 DPI)
+            dpi = 300
+            bbox_mm = [
+                round(bbox_px[0] * 25.4 / dpi, 2),
+                round(bbox_px[1] * 25.4 / dpi, 2),
+                round(bbox_px[2] * 25.4 / dpi, 2),
+                round(bbox_px[3] * 25.4 / dpi, 2)
+            ]
+            
+            return {
+                "text": text,
+                "confidence": round(conf, 3),
+                "bbox_px": bbox_px,
+                "bbox_mm": bbox_mm,
+                "ocr_engine": "paddleocr"
+            }
+            
+        except Exception as e:
+            logger.warning(f"⚠️ PaddleOCR failed for bbox {bbox_px}: {e}")
+            return {
+                "text": "",
+                "confidence": 0.0,
+                "bbox_px": bbox_px,
+                "bbox_mm": None,
+                "ocr_engine": "paddleocr"
+            }
+    
+    def extract_from_image(self, image_path: str, save_raw: bool = True) -> Dict[str, Any]:
+        """
+        Extract all detected text lines from an image (backward compatibility).
+        
+        Args:
+            image_path: Path to input image
+            save_raw: Whether to save raw OCR JSON output (deprecated, use debug mode)
+            
+        Returns:
+            Dict with extracted text lines, confidence, and bbox
+        """
+        return self.extract_full_text(image_path)
     
     def extract_fields(self, image_path: str, template: Dict[str, Any]) -> Dict[str, Any]:
         """

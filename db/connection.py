@@ -20,7 +20,10 @@ def _build_database_url() -> str:
     driver = os.getenv("DB_DRIVER")
     if not driver:
         # Default to SQLite when no explicit configuration is provided.
-        if any(os.getenv(key) for key in ("DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME")):
+        # Check for MySQL variables (both DB_* and MYSQL_* formats)
+        mysql_vars = ("DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME",
+                     "MYSQL_HOST", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_DB")
+        if any(os.getenv(key) for key in mysql_vars):
             driver = "mysql"
         else:
             driver = "sqlite"
@@ -31,11 +34,12 @@ def _build_database_url() -> str:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         return f"sqlite:///{db_path}"
 
-    host = os.getenv("DB_HOST", "localhost")
-    port = os.getenv("DB_PORT", "3306")
-    user = os.getenv("DB_USER", "root")
-    password = os.getenv("DB_PASSWORD", "")
-    name = os.getenv("DB_NAME", "autoformfill")
+    # Support both DB_* and MYSQL_* environment variable names
+    host = os.getenv("MYSQL_HOST") or os.getenv("DB_HOST", "localhost")
+    port = os.getenv("MYSQL_PORT") or os.getenv("DB_PORT", "3306")
+    user = os.getenv("MYSQL_USER") or os.getenv("DB_USER", "root")
+    password = os.getenv("MYSQL_PASSWORD") or os.getenv("DB_PASSWORD", "")
+    name = os.getenv("MYSQL_DB") or os.getenv("DB_NAME", "autoformfill")
 
     return (
         f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}"
