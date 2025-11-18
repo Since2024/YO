@@ -1,34 +1,11 @@
-# Core OCR and Image Processing
-pytesseract==0.3.10
-opencv-python==4.8.1.78
-Pillow==10.1.0
-numpy==1.24.3
-
-# Web API
-fastapi==0.110.0
-uvicorn[standard]==0.29.0
-python-multipart==0.0.9
-
-# Frontend UI
-streamlit==1.32.0
-requests==2.31.0
-
-# Database ORM
-SQLAlchemy==2.0.23
-pymysql==1.1.0
-
-# PDF Generation
-reportlab==4.0.7
-
-# Configuration
-python-dotenv==1.0.0
-
-# Fuzzy String Matching
-rapidfuzz==3.6.1
-
-# Better OCR Engine (for Nepali/Devanagari) - CPU version
-paddleocr==2.7.3
-paddlepaddle==2.6.1
-
-# Testing
-pytest==7.4.3
+pillow==10.4.0
+numpy==1.26.4
+opencv-python==4.10.0.84
+pytesseract==0.3.13
+google-generativeai==0.7.2
+reportlab==4.2.2
+SQLAlchemy==2.0.31
+pymysql==1.1.1
+streamlit==1.38.0
+python-dotenv==1.0.1
+pytest==7.4.4

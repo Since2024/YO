@@ -1,0 +1,84 @@
+"""Simple OCR fallback that honors template bounding boxes."""
+
+from __future__ import annotations
+
+from typing import Dict
+
+import cv2
+import numpy as np
+import pytesseract
+from PIL import Image
+
+from app.utils import get_logger, template_fields
+
+logger = get_logger(__name__)
+
+
+class OCRFallbackError(RuntimeError):
+    """Raised when OCR fallback fails."""
+
+
+def _preprocess(region):
+    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (3, 3), 0)
+    return cv2.adaptiveThreshold(
+        blur,
+        255,
+        cv2.ADAPTIVE_THRESH_MEAN_C,
+        cv2.THRESH_BINARY,
+        29,
+        5,
+    )
+
+
+def _extract_region_text(region, lang: str, psm: int) -> str:
+    pil_image = Image.fromarray(region)
+    config = f"--psm {psm} --oem 3"
+    try:
+        result = pytesseract.image_to_string(pil_image, lang=lang, config=config)
+    except pytesseract.TesseractError as exc:
+        raise OCRFallbackError(str(exc)) from exc
+    return result.strip()
+
+
+def extract_fields_with_ocr(image_path: str, template_json: Dict) -> Dict[str, Dict]:
+    """Fallback extraction relying on local Tesseract."""
+    logger.warning("Running OCR fallback for %s", image_path)
+    image = cv2.imread(image_path)
+    if image is None:
+        raise OCRFallbackError(f"Cannot read image: {image_path}")
+
+    extracted: Dict[str, Dict] = {}
+    for field in template_fields(template_json):
+        fid = field.get("id")
+        bbox = (field.get("bbox") or {}).get("px")
+        if not fid or not bbox or len(bbox) != 4:
+            continue
+
+        x, y, w, h = map(int, bbox)
+        region = image[y : y + h, x : x + w]
+        if region.size == 0:
+            continue
+
+        lang = field.get("ocr", {}).get("lang", "nep+eng")
+        psm = field.get("ocr", {}).get("psm", 7)
+
+        preprocessed = _preprocess(region)
+        text = _extract_region_text(preprocessed, lang, psm)
+
+        confidence = 0.8 if text else 0.0
+        extracted[fid] = {
+            "value": text,
+            "confidence": confidence,
+            "notes": "ocr_fallback",
+        }
+
+    if not extracted:
+        raise OCRFallbackError("OCR fallback produced no fields")
+
+    logger.info("OCR fallback extracted %d fields", len(extracted))
+    return extracted
+
+
+__all__ = ["extract_fields_with_ocr", "OCRFallbackError"]
+

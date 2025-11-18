@@ -1,135 +1,119 @@
-# Auto Form Fill – OCR + PDF Automation MVP
+# FirstChild – Gemini-powered Nepali Form Extractor
 
-Automated pipeline for processing Nepali government forms. Upload a scanned form, run OCR (Tesseract with Nepali + English models), review and edit extracted data, store the validated payload in MySQL, and generate a filled PDF that can be downloaded or shared.
+Minimal MVP that turns batches of Nepali government forms into structured JSON, filled PDFs, and database records. Gemini Vision handles semantic extraction, OCR provides a local fallback, ReportLab renders the output, and both CLI + Streamlit UI share the same pipeline.
 
-## ✨ Key Features
+## Highlights
 
-- **Template-driven OCR** – JSON templates define bounding boxes for each field on Business Tax and Land Tax forms.
-- **Tesseract (nep+eng)** – Reliable text extraction for Nepali and English characters with bundled tessdata support.
-- **FastAPI backend** – REST endpoints for OCR, validation, persistence, and PDF generation.
-- **Streamlit frontend** – Minimal UI to upload images, review OCR results, edit values, and download filled PDFs.
-- **MySQL via SQLAlchemy** – Stores submission history (`ocr_submissions`) with extracted data and PDF paths.
-- **ReportLab PDF output** – Produces print-ready overlays on top of the original form template.
-- **CLI demo script** – `run_demo.sh` runs the full pipeline on a bundled sample image without launching the web stack.
+- **Gemini Vision 1.5 Flash** for semantic mapping (`app/gemini/extractor.py`).
+- **OCR fallback** (Tesseract/OpenCV) whenever Gemini is unavailable.
+- **Template-driven normalization** in `app/filler/form_filler.py`.
+- **ReportLab + Noto Sans Devanagari** PDF generator with simple style hooks.
+- **SQLAlchemy + MySQL/SQLite** persistence via `app/db`.
+- **One CLI + Streamlit UI** calling the same core functions.
 
-## 🗂 Project Structure
+Repository layout (only the files that remain after cleanup):
 
 ```
-ocr/               # OCR extractor (pytesseract)
-filler/            # Template loading, validation, data prep
-printer/           # PDF generation utilities
-db/                # SQLAlchemy models & session helpers
-utils/             # Logging utilities
-main.py            # FastAPI application (uvicorn entrypoint)
-app.py             # Streamlit UI for the MVP
-run_demo.sh        # CLI demo pipeline
-requirements.txt   # Python dependencies
-templates/         # JSON templates + reference images
-data/              # Runtime data (uploads, etc.)
-output/            # Generated PDFs & JSON outputs
+app/
+  gemini/         # Gemini Vision wrapper
+  filler/         # Value normalization
+  printer/        # PDF generation
+  ocr/            # Lightweight OCR fallback
+  utils/          # Template helpers + logging
+  db/             # SQLAlchemy models + session helpers
+  templates/      # JSON templates + reference images
+  frontend/       # Streamlit UI
+main.py           # CLI entry point
+requirements.txt
+README.md
 ```
 
-## ⚙️ Prerequisites
+Run artifacts (JSON/PDF) are written to `./artifacts/` automatically.
 
-- Python 3.10+
-- Tesseract OCR with Nepali data:
-  ```bash
-  sudo pacman -S tesseract tesseract-data-nep
-  ```
-- MySQL server (or use SQLite fallback – see below)
+## Prerequisites
 
-## 🚀 Quick Start
+- Python 3.11+ (tested on 3.13).
+- Tesseract with Nepali data: `sudo pacman -S tesseract tesseract-data-nep`.
+- MySQL 8+ (or skip and let SQLite handle local testing).
+- GOOGLE API access: set `GEMINI_API_KEY`.
 
-1. **Clone & install dependencies**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your MySQL credentials
-   ```
-   > Tip: set `DB_DRIVER=sqlite` to use a local SQLite database (`data/autoformfill.db`) when MySQL isn’t available.
-
-3. **Run the backend (FastAPI)**
-   ```bash
-   python main.py
-   # Server listens on http://localhost:8000
-   ```
-
-4. **Launch the frontend (Streamlit)**
-   ```bash
-   streamlit run app.py
-   # Opens http://localhost:8501
-   ```
-
-5. **Demo the pipeline via CLI (optional)**
-   ```bash
-   ./run_demo.sh
-   # Outputs: output/demo/demo_cli.pdf and demo_cli.json
-   ```
-
-## 🌐 API Endpoints
-
-| Method | Path | Description |
-| ------ | ---- | ----------- |
-| GET    | `/health` | Service health probe |
-| GET    | `/templates` | List available JSON templates |
-| POST   | `/ocr` | Run OCR on an uploaded image (multipart) |
-| POST   | `/submit` | Validate, persist, and generate filled PDF |
-| GET    | `/submissions` | Recent submissions (latest first) |
-| GET    | `/submissions/{id}` | Submission metadata |
-| GET    | `/submissions/{id}/pdf` | Download generated PDF |
-
-## 🖥 Streamlit Workflow
-
-1. Select a form template (Business Tax / Land Tax).
-2. Upload the scanned form image.
-3. Click **Run OCR** to populate fields automatically.
-4. Review + edit any values directly in the UI.
-5. Click **Validate & Save** to store data and generate the PDF.
-6. Download the filled PDF with a single click.
-
-Validation warnings and errors are surfaced immediately. All actions also log to the console via `utils/logger.py`.
-
-## 🗄 Database Schema
-
-`ocr_submissions`
-
-| Column          | Type     | Notes |
-| --------------- | -------- | ----- |
-| `id`            | INT PK   | Auto increment |
-| `form_name`     | VARCHAR  | Display name of template |
-| `template_id`   | VARCHAR  | JSON template filename |
-| `image_path`    | VARCHAR  | Stored upload path |
-| `pdf_path`      | VARCHAR  | Generated PDF path |
-| `fields_json`   | TEXT     | JSON payload of fields |
-| `validation_json` | TEXT   | Validation summary |
-| `created_at`    | DATETIME | UTC timestamp |
-
-## 🧪 Testing the Core Pipeline
-
-The CLI demo script uses the Business Tax front image:
+## Setup
 
 ```bash
-./run_demo.sh
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+export GEMINI_API_KEY=xxxxxxxxxxxxxxxx
+export MYSQL_HOST=localhost      # optional, SQLite used when unset
+export MYSQL_USER=formfill
+export MYSQL_PASSWORD=secret
+export MYSQL_DB=firstchild
 ```
 
-It prints extracted field JSON, validation results, and writes both a PDF overlay and a companion JSON file to `output/demo/`.
+The database tables are created automatically the first time you run the CLI/UI.
 
-## 🛠 Troubleshooting
+## CLI – Multi-image extraction
 
-- **Tesseract cannot find `nep` / `eng`**: make sure the language data is installed or download `nep.traineddata` into the `tessdata/` folder (the backend automatically sets `TESSDATA_PREFIX`).
-- **MySQL unavailable**: set `DB_DRIVER=sqlite` in `.env` to fall back to a local SQLite database for demos.
-- **Streamlit cannot contact backend**: confirm `python main.py` is running on `http://localhost:8000` and update the sidebar URL if necessary.
-- **PDF overlay misalignment**: verify the template JSON bounding boxes (`templates/*.json`) match the uploaded form resolution.
+```
+python main.py extract \
+  --images input/sample/id.jpg input/sample/sample_business_tax.png \
+  --template business_tax_front.json \
+  --output-name demo_business
+```
 
-## 📄 License
+What happens:
 
-MIT – see `LICENSE` if included.
+1. Every image is passed to Gemini Vision along with the template schema.
+2. If Gemini fails, the first image runs through the OCR fallback.
+3. Output JSON + filled PDF land in `artifacts/demo_business.(json|pdf)`.
+4. A `form_submissions` row stores raw + normalized payload.
 
----
+List templates at any time:
 
+```
+python main.py templates
+```
+
+## Streamlit UI
+
+```
+streamlit run app/frontend/ui.py
+```
+
+Capabilities:
+
+- Drag/drop multiple images.
+- Live preview and Gemini extraction with OCR fallback.
+- Inspect the JSON payload.
+- Generate PDF + save to DB with one click.
+
+## Environment Variables
+
+| Name             | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| `GEMINI_API_KEY` | Required. Google Generative AI key               |
+| `GEMINI_MODEL`   | Optional. Defaults to `gemini-1.5-flash`         |
+| `DATABASE_URL`   | Optional full SQLAlchemy URL                     |
+| `MYSQL_*`/`DB_*` | Optional components for building a MySQL URL     |
+| `SQLITE_PATH`    | Optional path for SQLite fallback                |
+| `LOG_LEVEL`      | INFO by default                                  |
+
+## Tests
+
+A single smoke test (`app/utils/smoke_test.py`) covers the CLI wiring. Run with:
+
+```
+pytest app/utils/smoke_test.py
+```
+
+## Troubleshooting
+
+- **Missing template background**: add `metadata.image_filename` inside the template JSON and place the referenced image under `app/templates/`.
+- **Gemini quota or auth errors**: confirm `GEMINI_API_KEY` and check Google Cloud quotas.
+- **ReportLab font download blocked**: manually download `NotoSansDevanagari-Regular.ttf` into `app/printer/fonts/`.
+- **MySQL unavailable**: omit the MySQL env vars and SQLite will be used automatically.
+
+## License
+
+MIT (see repository root if provided).
