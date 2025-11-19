@@ -4,15 +4,29 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from typing import Any, Dict, List
 
 from app.utils import get_logger, template_fields
 
 logger = get_logger(__name__)
 
-_raw_model = os.getenv("GEMINI_MODEL") or "models/gemini-1.5-flash"
-MODEL_NAME = _raw_model if _raw_model.startswith("models/") else f"models/{_raw_model}"
+
+def _sanitize_model_name(name: str) -> str:
+    return name.replace("models/", "") if name.startswith("models/") else name
+
+
+_env_model = os.getenv("GEMINI_MODEL")
+_MODEL_CANDIDATES = (
+    [_sanitize_model_name(_env_model)]
+    if _env_model
+    else [_sanitize_model_name("gemini-2.5-flash"), _sanitize_model_name("gemini-2.5-pro")]
+)
+
+MODEL_NAME = _MODEL_CANDIDATES[0]
+API_ENDPOINT = "https://generativelanguage.googleapis.com"
 _GENAI = None
+REQUEST_TIMEOUT_SECONDS = 30
 
 
 class GeminiExtractionError(RuntimeError):
@@ -40,19 +54,35 @@ def _build_prompt(template_json: Dict) -> str:
 
     instructions = {
         "task": (
-            "Read all attached Nepali government form images. "
-            "Interpret fields by meaning (semantic mapping). "
-            "Fill the provided template fields only. "
-            "Do not invent data. If a value is missing, use an empty string and confidence 0."
+            "You are extracting data from Nepali government documents (citizenship certificates, forms, etc.) "
+            "to fill a land tax form template. Use SEMANTIC MAPPING - understand the MEANING of fields, not just labels. "
+            "\n\nSemantic Mapping Rules:"
+            "\n- Citizenship 'नाम धर:' → Land Tax 'जग्गा/धनीको नाम र थर' (owner name)"
+            "\n- Citizenship 'बाबुको नाम धर:' → Land Tax 'बाबु/पतिको नाम र थर' (father name)"
+            "\n- Citizenship 'जन्म मिति:' → Use for date fields if needed"
+            "\n- Citizenship 'जिल्ला:' → Can be part of permanent address"
+            "\n- Citizenship 'गाउँपालिका/नगरपालिका:' → Part of address"
+            "\n\nIMPORTANT:"
+            "\n- Map fields by MEANING, not by exact label match"
+            "\n- Extract ALL readable text from the source document"
+            "\n- Fill target template fields based on semantic similarity"
+            "\n- If a required field has no matching source data, use empty string and confidence 0"
+            "\n- Preserve Nepali Unicode text exactly as it appears"
+            "\n- For dates: convert Nepali calendar to Gregorian if needed (साल २०६१ = year 2004-2005)"
         ),
         "output_schema": "{field_id: {value: string, confidence: float (0-1), notes: string}}",
-        "field_list": field_info,
+        "target_fields": field_info,
+        "examples": {
+            "f002": "हसन गाहा (extracted from citizenship 'नाम धर:')",
+            "f003": "धन राज गाहा (extracted from citizenship 'बाबुको नाम धर:')",
+            "f006": "कालीगण्डकी, स्याङ्जा (combined from citizenship address fields)"
+        }
     }
     return json.dumps(instructions, ensure_ascii=False, indent=2)
 
 
 def _ensure_model() -> Any:
-    global _GENAI
+    global _GENAI, MODEL_NAME
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise GeminiExtractionError("GEMINI_API_KEY is not set")
@@ -65,8 +95,24 @@ def _ensure_model() -> Any:
                 "Add it via pip install google-generativeai."
             ) from exc
         _GENAI = genai_mod
-    _GENAI.configure(api_key=api_key)
-    return _GENAI.GenerativeModel(MODEL_NAME)
+        _GENAI.configure(
+            api_key=api_key,
+            transport="rest",
+            client_options={"api_endpoint": API_ENDPOINT},
+        )
+
+    last_error: Exception | None = None
+    for candidate in _MODEL_CANDIDATES:
+        try:
+            model = _GENAI.GenerativeModel(candidate)
+            if candidate != MODEL_NAME:
+                logger.info("Gemini: switching to fallback model %s", candidate)
+            MODEL_NAME = candidate
+            return model
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Gemini: failed to initialize model %s: %s", candidate, exc)
+    raise GeminiExtractionError("Unable to initialize Gemini model") from last_error
 
 
 def _coerce_json(payload: str) -> Dict:
@@ -91,6 +137,8 @@ def _coerce_json(payload: str) -> Dict:
 def _normalize_output(raw: Dict, template_json: Dict) -> Dict[str, Dict]:
     normalized: Dict[str, Dict] = {}
     for field in template_fields(template_json):
+        if field is None or not isinstance(field, dict):
+            continue
         fid = field.get("id")
         if not fid:
             continue
@@ -141,16 +189,39 @@ def extract_fields_from_images(
     for image_bytes in images:
         parts.append({"mime_type": "image/jpeg", "data": image_bytes})
 
+    template_field_count = sum(
+        1 for field in template_fields(template_json) if isinstance(field, dict)
+    )
+
+    logger.info(
+        "Gemini request start | model=%s | images=%d | fields=%d",
+        MODEL_NAME,
+        len(images),
+        template_field_count,
+    )
+    start_time = time.perf_counter()
+    logger.debug(
+        "Gemini request payload prepared (parts=%d)", len(parts)
+    )
+
     try:
         response = model.generate_content(
             parts,
             generation_config={
-                "temperature": 0.2,
+                "temperature": 0.1,  # Lower for more consistent extraction
                 "top_p": 0.8,
+                "top_k": 40,
                 "response_mime_type": "application/json",
             },
+            request_options={"timeout": REQUEST_TIMEOUT_SECONDS},
         )
+        elapsed = time.perf_counter() - start_time
+        logger.info("Gemini response received in %.2fs", elapsed)
+        if getattr(response, "prompt_feedback", None):
+            logger.debug("Gemini prompt feedback: %s", response.prompt_feedback)
     except Exception as exc:  # pragma: no cover - network failure
+        elapsed = time.perf_counter() - start_time
+        logger.exception("Gemini API call failed after %.2fs", elapsed)
         raise GeminiExtractionError(str(exc)) from exc
 
     text = response.text
@@ -162,7 +233,10 @@ def extract_fields_from_images(
         )
 
     if not text:
+        logger.error("Gemini returned an empty response (no text/candidates)")
         raise GeminiExtractionError("Gemini returned an empty response")
+
+    logger.debug("Gemini raw response text (first 500 chars): %s", text[:500])
 
     try:
         raw = _coerce_json(text)

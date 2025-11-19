@@ -115,7 +115,7 @@
     },
     {
       "id": "f005",
-      "name": "जग्गाधनीको नाम नं",
+      "name": "जग्गाधनीको पान नं",
       "label": "Land Owner ID Number",
       "type": "text_line",
       "page": 1,

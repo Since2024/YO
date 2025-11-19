@@ -2,17 +2,42 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, List
 
 import cv2
 import numpy as np
 import pytesseract
+from pytesseract import TesseractError
 from PIL import Image
 
 from app.utils import get_logger, template_fields
 
 logger = get_logger(__name__)
 
+AVAILABLE_LANGS: List[str] = []
+try:
+    AVAILABLE_LANGS = pytesseract.get_languages(config="")
+except pytesseract.TesseractError:
+    logger.warning("Unable to list Tesseract languages; defaulting to eng.")
+
+VALID_LANG_FALLBACK = "eng"
+
+
+def validate_lang(lang_code: str | None) -> str:
+    """Return a Tesseract language string that exists on this system."""
+    if not lang_code:
+        lang_code = "nep+eng"
+
+    if not AVAILABLE_LANGS:
+        return VALID_LANG_FALLBACK
+
+    parts = [segment.strip() for segment in lang_code.split("+") if segment.strip()]
+    valid_parts = [segment for segment in parts if segment in AVAILABLE_LANGS]
+    if valid_parts:
+        return "+".join(valid_parts)
+
+    logger.warning("Lang '%s' not available. Using '%s'.", lang_code, VALID_LANG_FALLBACK)
+    return VALID_LANG_FALLBACK
 
 class OCRFallbackError(RuntimeError):
     """Raised when OCR fallback fails."""
@@ -36,7 +61,7 @@ def _extract_region_text(region, lang: str, psm: int) -> str:
     config = f"--psm {psm} --oem 3"
     try:
         result = pytesseract.image_to_string(pil_image, lang=lang, config=config)
-    except pytesseract.TesseractError as exc:
+    except TesseractError as exc:
         raise OCRFallbackError(str(exc)) from exc
     return result.strip()
 
@@ -50,6 +75,8 @@ def extract_fields_with_ocr(image_path: str, template_json: Dict) -> Dict[str, D
 
     extracted: Dict[str, Dict] = {}
     for field in template_fields(template_json):
+        if field is None or not isinstance(field, dict):
+            continue
         fid = field.get("id")
         bbox = (field.get("bbox") or {}).get("px")
         if not fid or not bbox or len(bbox) != 4:
@@ -60,8 +87,12 @@ def extract_fields_with_ocr(image_path: str, template_json: Dict) -> Dict[str, D
         if region.size == 0:
             continue
 
-        lang = field.get("ocr", {}).get("lang", "nep+eng")
-        psm = field.get("ocr", {}).get("psm", 7)
+        ocr_config = field.get("ocr", {})
+        if not isinstance(ocr_config, dict):
+            ocr_config = {}
+
+        lang = validate_lang(ocr_config.get("lang", "nep+eng"))
+        psm = ocr_config.get("psm", 7)
 
         preprocessed = _preprocess(region)
         text = _extract_region_text(preprocessed, lang, psm)

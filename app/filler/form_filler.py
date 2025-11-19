@@ -62,7 +62,11 @@ def prepare_pdf_fields(gemini_output: Dict[str, Dict], template_json: Dict) -> L
         List of dicts with keys: id, name, value, confidence, bbox_px, page, style
     """
     prepared: List[Dict] = []
+    
     for field in template_fields(template_json):
+        if field is None or not isinstance(field, dict):
+            continue
+            
         fid = field.get("id")
         bbox = (field.get("bbox") or {}).get("px")
         if not fid or not bbox or len(bbox) != 4:
@@ -71,7 +75,9 @@ def prepare_pdf_fields(gemini_output: Dict[str, Dict], template_json: Dict) -> L
         entry = gemini_output.get(fid, {})
         raw_value = entry.get("value", "")
         normalized = _normalize_value(field, raw_value)
-        if normalized == "":
+        
+        # Skip empty optional fields, but keep empty required fields for visibility
+        if normalized == "" and not field.get("validate", {}).get("req"):
             continue
 
         try:

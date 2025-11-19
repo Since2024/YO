@@ -17,22 +17,24 @@ logger = get_logger(__name__)
 
 
 def _build_url() -> str:
-    explicit = os.getenv("DATABASE_URL")
-    if explicit:
-        return explicit
-
-    mysql_host = os.getenv("MYSQL_HOST")
-    if mysql_host or os.getenv("DB_HOST"):
-        host = mysql_host or os.getenv("DB_HOST", "localhost")
-        user = os.getenv("MYSQL_USER") or os.getenv("DB_USER", "root")
-        password = os.getenv("MYSQL_PASSWORD") or os.getenv("DB_PASSWORD", "")
-        name = os.getenv("MYSQL_DB") or os.getenv("DB_NAME", "firstchild")
-        port = os.getenv("MYSQL_PORT") or os.getenv("DB_PORT", "3306")
-        return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset=utf8mb4"
-
+    # Force SQLite usage regardless of environment variables.
     sqlite_path = Path(os.getenv("SQLITE_PATH", data_dir() / "mvp.sqlite3"))
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{sqlite_path}"
+
+    # Legacy MySQL/MariaDB detection logic is intentionally bypassed.
+    # explicit = os.getenv("DATABASE_URL")
+    # if explicit:
+    #     return explicit
+    #
+    # mysql_host = os.getenv("MYSQL_HOST")
+    # if mysql_host or os.getenv("DB_HOST"):
+    #     host = mysql_host or os.getenv("DB_HOST", "localhost")
+    #     user = os.getenv("MYSQL_USER") or os.getenv("DB_USER", "root")
+    #     password = os.getenv("MYSQL_PASSWORD") or os.getenv("DB_PASSWORD", "")
+    #     name = os.getenv("MYSQL_DB") or os.getenv("DB_NAME", "firstchild")
+    #     port = os.getenv("MYSQL_PORT") or os.getenv("DB_PORT", "3306")
+    #     return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}?charset=utf8mb4"
 
 
 DATABASE_URL = _build_url()

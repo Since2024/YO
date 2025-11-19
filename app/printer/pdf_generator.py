@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 import urllib.request
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, List
 
 from PIL import Image
+from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -34,10 +35,6 @@ def _ensure_font():
         pdfmetrics.registerFont(TTFont(FONT_NAME, str(FONT_PATH)))
 
 
-def _px_to_pt(px: float, dpi: int = 300) -> float:
-    return px * 72.0 / dpi
-
-
 def _apply_style(value: str, style) -> str:
     if isinstance(style, str) and style.lower() == "uppercase":
         return value.upper()
@@ -46,73 +43,75 @@ def _apply_style(value: str, style) -> str:
     return value
 
 
-def _draw_field(canv: canvas.Canvas, field: Dict, page_height_pt: float, dpi: int):
-    bbox = field["bbox_px"]
-    x_pt = _px_to_pt(bbox[0], dpi)
-    y_pt = page_height_pt - _px_to_pt(bbox[1] + bbox[3], dpi)
-    height_pt = _px_to_pt(bbox[3], dpi)
-    width_pt = _px_to_pt(bbox[2], dpi)
+def _draw_field(canv: canvas.Canvas, field: Dict, bg_height: int, font_name: str):
+    fid = field.get("id", "unknown")
+    value = str(field.get("value", "")).strip()
+    bbox = field.get("bbox_px")
 
-    font_size = max(8, min(18, height_pt * 0.8))
-    canv.setFont(FONT_NAME, font_size)
+    if not bbox or len(bbox) != 4:
+        print(f"⚠️  Field {fid}: Invalid bbox {bbox}")
+        return
 
-    value = _apply_style(str(field["value"]), field.get("style"))
-    align = "left"
-    if isinstance(field.get("style"), dict):
-        align = field["style"].get("align", "left")
+    if not value:
+        print(f"⚠️  Field {fid}: Empty value")
+        return
 
-    if align == "center":
-        text_width = canv.stringWidth(value, FONT_NAME, font_size)
-        start_x = x_pt + max(0, (width_pt - text_width) / 2)
-    elif align == "right":
-        text_width = canv.stringWidth(value, FONT_NAME, font_size)
-        start_x = x_pt + max(0, width_pt - text_width)
-    else:
-        start_x = x_pt
+    x, y, w, h = bbox
+    font_size = max(8, min(int(h * 0.6), 16))
+    pdf_y = bg_height - y - h
+    text_y = pdf_y + (h - font_size) / 2
 
-    canv.drawString(start_x, y_pt + height_pt * 0.15, value)
+    print(f"Field {fid}:")
+    print(f"  Value: {value}")
+    print(f"  BBox: x={x}, y={y}, w={w}, h={h}")
+    print(f"  PDF coords: x={x}, y={pdf_y}")
+    print(f"  Font size: {font_size}")
+
+    value = _apply_style(value, field.get("style"))
+
+    canv.setFont(font_name, font_size)
+    canv.setFillColor(colors.black)
+    canv.drawString(x, text_y, value)
 
 
 def create_filled_pdf(
     template_image: str,
     fields: List[Dict],
     output_path: str,
-    dpi: int = 300,
 ) -> str:
-    """
-    Overlay normalized field values onto the template image.
-
-    Args:
-        template_image: Background image path.
-        fields: Output of prepare_pdf_fields.
-        output_path: Destination PDF.
-        dpi: Template DPI (default 300).
-    """
+    """Overlay normalized field values onto the template image."""
     if not fields:
         raise ValueError("No fields provided for PDF generation")
 
-    _ensure_font()
     pil_image = Image.open(template_image)
     width_px, height_px = pil_image.size
-    width_pt = _px_to_pt(width_px, dpi)
-    height_pt = _px_to_pt(height_px, dpi)
 
-    canv = canvas.Canvas(output_path, pagesize=(width_pt, height_pt))
-    canv.drawImage(
-        template_image,
-        0,
-        0,
-        width=width_pt,
-        height=height_pt,
-        preserveAspectRatio=True,
-        mask="auto",
-    )
+    print("\n" + "=" * 60)
+    print("PDF Generation Debug Info")
+    print(f"Background: {template_image}")
+    print(f"Background size: {width_px}x{height_px}px")
+    print(f"Number of fields: {len(fields)}")
+    print("=" * 60 + "\n")
+
+    canv = canvas.Canvas(output_path, pagesize=(width_px, height_px))
+    canv.drawImage(template_image, 0, 0, width=width_px, height=height_px)
+
+    nep_font_path = Path(__file__).parent / "fonts" / "NotoSansDevanagari-Regular.ttf"
+    if nep_font_path.exists():
+        if FONT_NAME not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(FONT_NAME, str(nep_font_path)))
+        font_name = FONT_NAME
+    else:
+        print(f"WARNING: Nepali font not found at {nep_font_path}")
+        font_name = "Helvetica"
 
     for field in fields:
-        _draw_field(canv, field, height_pt, dpi)
+        _draw_field(canv, field, height_px, font_name)
 
     canv.save()
-    logger.info("Saved PDF to %s", output_path)
+    print("=" * 60)
+    print(f"PDF saved: {output_path}")
+    print("=" * 60 + "\n")
     return output_path
 
 
