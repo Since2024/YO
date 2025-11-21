@@ -69,6 +69,8 @@ def _build_prompt(template_json: Dict) -> str:
             "\n- If a required field has no matching source data, use empty string and confidence 0"
             "\n- Preserve Nepali Unicode text exactly as it appears"
             "\n- For dates: convert Nepali calendar to Gregorian if needed (साल २०६१ = year 2004-2005)"
+            "\n✗ NEVER fill f001 (आन्तरिक संकेत नं/Economic Code) - office assigned only"
+            "\n✗ NEVER map citizenship number to f005 (जग्गाधनीको पात नं) - leave empty"
         ),
         "output_schema": "{field_id: {value: string, confidence: float (0-1), notes: string}}",
         "target_fields": field_info,

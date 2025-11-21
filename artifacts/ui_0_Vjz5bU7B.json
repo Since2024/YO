@@ -1,0 +1,72 @@
+{
+  "f001": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Field f001 (आन्तरिक संकेत नं) should never be filled as per instructions. [user-edited]"
+  },
+  "f002": {
+    "value": "हसन गाहा",
+    "confidence": 1.0,
+    "notes": "Mapped from 'नाम थर:' on citizenship certificate. [user-edited]"
+  },
+  "f003": {
+    "value": "धन राज गाहा",
+    "confidence": 1.0,
+    "notes": "Mapped from 'बाबुको नाम थर:' on citizenship certificate. [user-edited]"
+  },
+  "f004": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No direct semantic match for 'बाजे/ससुराको नाम र थर' found in the source document. [user-edited]"
+  },
+  "f005": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Field f005 (जग्गाधनीको पन नं) should never be mapped from citizenship number as per instructions. No other relevant ID found. [user-edited]"
+  },
+  "f006": {
+    "value": "कालीगण्डकी गाउँपालिका-१, स्याङ्जा",
+    "confidence": 1.0,
+    "notes": "Combined 'जिल्ला:', 'गाउँपालिका/नगरपालिका:', and 'वडा नं:' from 'स्थायी बासस्थान' on citizenship certificate. [user-edited]"
+  },
+  "f007": {
+    "value": "9842862174",
+    "confidence": 0.0,
+    "notes": "No mobile number found in the source document. [user-edited]"
+  },
+  "f008": {
+    "value": "hasonmagaer",
+    "confidence": 0.0,
+    "notes": "No email address found in the source document. [user-edited]"
+  },
+  "f009": {
+    "value": "हसन गाहा",
+    "confidence": 0.8,
+    "notes": "Assumed the landowner (certificate holder) is the submitter, as no separate submitter information is provided. [user-edited]"
+  },
+  "f010": {
+    "value": "कालीगण्डकी गाउँपालिका-१, स्याङ्जा",
+    "confidence": 0.8,
+    "notes": "Assumed the submitter's address is the same as the landowner's permanent address. [user-edited]"
+  },
+  "f011": {
+    "value": "स्वयं",
+    "confidence": 0.9,
+    "notes": "Assumed the submitter is the landowner ('स्वयं' meaning 'self' or 'owner'). [user-edited]"
+  },
+  "f012": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No mobile number for the submitter found in the source document. [user-edited]"
+  },
+  "f014": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No submission date found in the source document. Birth date is present but not relevant for submission date. [user-edited]"
+  },
+  "f013": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Signature is an image and cannot be extracted as text. [user-edited]"
+  }
+}

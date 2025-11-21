@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import urllib.request
 from pathlib import Path
+import re
 from typing import Dict, List
 
 from PIL import Image
@@ -43,75 +44,118 @@ def _apply_style(value: str, style) -> str:
     return value
 
 
-def _draw_field(canv: canvas.Canvas, field: Dict, bg_height: int, font_name: str):
-    fid = field.get("id", "unknown")
-    value = str(field.get("value", "")).strip()
-    bbox = field.get("bbox_px")
-
-    if not bbox or len(bbox) != 4:
-        print(f"⚠️  Field {fid}: Invalid bbox {bbox}")
-        return
-
-    if not value:
-        print(f"⚠️  Field {fid}: Empty value")
-        return
-
-    x, y, w, h = bbox
-    font_size = max(8, min(int(h * 0.6), 16))
-    pdf_y = bg_height - y - h
-    text_y = pdf_y + (h - font_size) / 2
-
-    print(f"Field {fid}:")
-    print(f"  Value: {value}")
-    print(f"  BBox: x={x}, y={y}, w={w}, h={h}")
-    print(f"  PDF coords: x={x}, y={pdf_y}")
-    print(f"  Font size: {font_size}")
-
-    value = _apply_style(value, field.get("style"))
-
-    canv.setFont(font_name, font_size)
-    canv.setFillColor(colors.black)
-    canv.drawString(x, text_y, value)
-
-
 def create_filled_pdf(
     template_image: str,
     fields: List[Dict],
     output_path: str,
 ) -> str:
-    """Overlay normalized field values onto the template image."""
+    """Create a PDF with fields overlaid on background image."""
+    
     if not fields:
         raise ValueError("No fields provided for PDF generation")
-
-    pil_image = Image.open(template_image)
-    width_px, height_px = pil_image.size
-
-    print("\n" + "=" * 60)
-    print("PDF Generation Debug Info")
-    print(f"Background: {template_image}")
-    print(f"Background size: {width_px}x{height_px}px")
-    print(f"Number of fields: {len(fields)}")
-    print("=" * 60 + "\n")
-
-    canv = canvas.Canvas(output_path, pagesize=(width_px, height_px))
-    canv.drawImage(template_image, 0, 0, width=width_px, height=height_px)
-
+    
+    # Load background
+    bg = Image.open(template_image)
+    bg_width, bg_height = bg.size
+    
+    # CRITICAL: Check if we need to scale coordinates
+    # Template expects 847x1197, but actual image might be different
+    TEMPLATE_WIDTH = 847
+    TEMPLATE_HEIGHT = 1197
+    
+    scale_x = bg_width / TEMPLATE_WIDTH
+    scale_y = bg_height / TEMPLATE_HEIGHT
+    
+    logger.info(f"Creating PDF: {output_path}")
+    logger.info(f"Background: {bg_width}x{bg_height}px")
+    logger.info(f"Template expects: {TEMPLATE_WIDTH}x{TEMPLATE_HEIGHT}px")
+    logger.info(f"Scale factors: x={scale_x:.2f}, y={scale_y:.2f}")
+    logger.info(f"Fields to render: {len(fields)}")
+    
+    # Create PDF
+    c = canvas.Canvas(output_path, pagesize=(bg_width, bg_height))
+    c.drawImage(template_image, 0, 0, width=bg_width, height=bg_height)
+    
+    # Register Nepali font
     nep_font_path = Path(__file__).parent / "fonts" / "NotoSansDevanagari-Regular.ttf"
     if nep_font_path.exists():
-        if FONT_NAME not in pdfmetrics.getRegisteredFontNames():
-            pdfmetrics.registerFont(TTFont(FONT_NAME, str(nep_font_path)))
+        _ensure_font()
         font_name = FONT_NAME
+        logger.info("Using Nepali font: NotoSansDevanagari")
     else:
-        print(f"WARNING: Nepali font not found at {nep_font_path}")
-        font_name = "Helvetica"
-
+        logger.warning(f"Nepali font not found, using Helvetica")
+        font_name = 'Helvetica'
+    
+    # Process each field
     for field in fields:
-        _draw_field(canv, field, height_px, font_name)
+        fid = field.get("id", "unknown")
+        value = field.get("value", "")
+        bbox_px = field.get("bbox_px")
+        field_name = field.get("name", fid)
+        field_type = field.get("type", "text_line")
 
-    canv.save()
-    print("=" * 60)
-    print(f"PDF saved: {output_path}")
-    print("=" * 60 + "\n")
+        if not bbox_px or len(bbox_px) != 4:
+            logger.warning(f"Field {fid}: Invalid bbox")
+            continue
+
+        if not value or not value.strip():
+            continue
+
+        # Get template coordinates
+        x_template, y_template, w_template, h_template = map(int, bbox_px)
+
+        # SCALE coordinates to actual image size
+        x = int(x_template * scale_x)
+        y = int(y_template * scale_y)
+        w = int(w_template * scale_x)
+        h = int(h_template * scale_y)
+
+        # Calculate font size
+        font_size = max(14, int(h * 0.70))
+        font_size = min(font_size, 48)
+
+        # Convert to PDF coordinates
+        pdf_y = bg_height - y - h
+
+        # Set font and color
+        c.setFont(font_name, font_size)
+        c.setFillColor(colors.black)
+
+        # Handle box_grid fields differently
+        if field_type == "box_grid":
+            # Get grid configuration from field
+            grid_config = field.get("grid", {})
+            num_boxes = grid_config.get("boxes", 5)
+
+            # Clean value - only digits
+            digits = re.sub(r"\D", "", value)
+
+            # Calculate box spacing
+            box_width = w / num_boxes
+
+            # Draw each digit in its own box
+            for i, digit in enumerate(digits[:num_boxes]):
+                digit_x = x + (i * box_width) + (box_width * 0.25)  # Center in box
+                text_offset_y = (h - font_size) / 2 + font_size * 0.25
+                final_y = pdf_y + text_offset_y
+
+                c.drawString(digit_x, final_y, digit)
+
+            logger.info(f"{fid}: '{value}' → split into {len(digits)} boxes")
+
+        else:
+            # Regular text field
+            value = _apply_style(str(value), field.get("style"))
+            text_offset_y = (h - font_size) / 2 + font_size * 0.25
+            final_y = pdf_y + text_offset_y
+            final_x = x + 5
+
+            c.drawString(final_x, final_y, value)
+
+            logger.info(f"{fid}: '{value}' at x={final_x:.1f}, y={final_y:.1f}")
+    
+    c.save()
+    logger.info(f"✓ PDF saved: {output_path}")
     return output_path
 
 

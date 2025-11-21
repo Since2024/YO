@@ -31,10 +31,32 @@ def _normalize_date(value: str) -> str:
 
 
 def _normalize_phone(value: str) -> str:
+    """Normalize phone to exactly 10 digits."""
     digits = re.sub(r"\D", "", _normalize_digits(value))
+
+    # Remove country code if present
     if digits.startswith("977") and len(digits) > 10:
         digits = digits[-10:]
-    return digits
+
+    # Take last 10 digits if longer
+    if len(digits) > 10:
+        digits = digits[-10:]
+
+    # Return only if exactly 10 digits
+    if len(digits) == 10:
+        return digits
+
+    return ""  # Invalid phone
+
+
+def _normalize_email(value: str) -> str:
+    """Basic email validation - must contain @."""
+    value = value.strip().lower()
+    # Must have @ and at least one character before and after
+    if "@" in value and len(value.split("@")[0]) > 0 and len(value.split("@")[1]) > 2:
+        return value
+
+    return ""  # Invalid email
 
 
 def _normalize_default(value: str) -> str:
@@ -45,12 +67,23 @@ def _normalize_value(field: Dict, value: str) -> str:
     ftype = (field.get("type") or "").lower()
     if not value:
         return ""
-    if ftype in {"date", "text_date"} or field.get("validate", {}).get("type") == "date":
-        return _normalize_date(value)
+
+    # Email validation
+    if "email" in ftype or field.get("validate", {}).get("type") == "email":
+        return _normalize_email(value)
+
+    # Phone validation
     if "phone" in ftype or field.get("validate", {}).get("type") == "phone":
         return _normalize_phone(value)
+
+    # Date validation
+    if ftype in {"date", "text_date"} or field.get("validate", {}).get("type") == "date":
+        return _normalize_date(value)
+
+    # Number fields
     if ftype in {"number", "box_grid"} or field.get("validate", {}).get("type") == "number":
         return _normalize_digits(value).replace(" ", "")
+
     return _normalize_default(value)
 
 
