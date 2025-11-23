@@ -8,6 +8,7 @@ from .templates import (
     template_fields,
     template_image_path,
 )
+from .image_optimizer import optimize_image_for_api
 
 __all__ = [
     "get_logger",
@@ -16,5 +17,6 @@ __all__ = [
     "resolve_template_asset",
     "template_fields",
     "template_image_path",
+    "optimize_image_for_api",
 ]
 

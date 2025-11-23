@@ -1,4 +1,4 @@
-# FirstChild – Gemini-powered Nepali Form Extractor
+# FOMO – Gemini-powered Nepali Form Extractor
 
 Minimal MVP that turns batches of Nepali government forms into structured JSON, filled PDFs, and database records. Gemini Vision handles semantic extraction, OCR provides a local fallback, ReportLab renders the output, and both CLI + Streamlit UI share the same pipeline.
 

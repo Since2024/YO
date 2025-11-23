@@ -109,68 +109,17 @@ def get_session() -> Iterator:
 
 
 def init_db() -> None:
-    """Initialize database tables. Handles connection errors gracefully."""
+    """Initialize database tables."""
     global DATABASE_URL, ENGINE, SessionLocal
     from .models import Base
-
+    from .migrations import run_migrations
+    
     try:
         Base.metadata.create_all(ENGINE)
         logger.info("Database ready (%s)", DATABASE_URL.split("://", 1)[0])
         
-        # Migration: Add missing columns
-        try:
-            with ENGINE.connect() as conn:
-                if DATABASE_URL.startswith("sqlite"):
-                    # Check user_profiles table for password_hash
-                    result = conn.execute(text(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='user_profiles'"
-                    ))
-                    if result.fetchone():
-                        result = conn.execute(text("PRAGMA table_info(user_profiles)"))
-                        columns = [row[1] for row in result.fetchall()]
-                        if "password_hash" not in columns:
-                            logger.info("Adding password_hash column to user_profiles table...")
-                            conn.execute(text("ALTER TABLE user_profiles ADD COLUMN password_hash VARCHAR(255)"))
-                            conn.commit()
-                            logger.info("Migration complete: password_hash column added")
-                    
-                    # Check form_submissions table for user_email
-                    result = conn.execute(text(
-                        "SELECT name FROM sqlite_master WHERE type='table' AND name='form_submissions'"
-                    ))
-                    if result.fetchone():
-                        result = conn.execute(text("PRAGMA table_info(form_submissions)"))
-                        columns = [row[1] for row in result.fetchall()]
-                        if "user_email" not in columns:
-                            logger.info("Adding user_email column to form_submissions table...")
-                            conn.execute(text("ALTER TABLE form_submissions ADD COLUMN user_email VARCHAR(255)"))
-                            conn.commit()
-                            logger.info("Migration complete: user_email column added")
-                else:
-                    # MySQL/MariaDB
-                    # Check user_profiles for password_hash
-                    result = conn.execute(text(
-                        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
-                        "WHERE TABLE_NAME = 'user_profiles' AND COLUMN_NAME = 'password_hash'"
-                    ))
-                    if not result.fetchone():
-                        logger.info("Adding password_hash column to user_profiles table...")
-                        conn.execute(text("ALTER TABLE user_profiles ADD COLUMN password_hash VARCHAR(255)"))
-                        conn.commit()
-                        logger.info("Migration complete: password_hash column added")
-                    
-                    # Check form_submissions for user_email
-                    result = conn.execute(text(
-                        "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
-                        "WHERE TABLE_NAME = 'form_submissions' AND COLUMN_NAME = 'user_email'"
-                    ))
-                    if not result.fetchone():
-                        logger.info("Adding user_email column to form_submissions table...")
-                        conn.execute(text("ALTER TABLE form_submissions ADD COLUMN user_email VARCHAR(255)"))
-                        conn.commit()
-                        logger.info("Migration complete: user_email column added")
-        except Exception as migration_error:
-            logger.warning(f"Migration check failed (may already exist): {migration_error}")
+        # Run migrations ONCE
+        run_migrations(ENGINE, DATABASE_URL)
             
     except OperationalError as e:
         # If MySQL connection fails during init, try SQLite fallback
@@ -189,6 +138,9 @@ def init_db() -> None:
             # Retry with SQLite
             Base.metadata.create_all(ENGINE)
             logger.info("Database ready (SQLite fallback)")
+            
+            # Run migrations on fallback database
+            run_migrations(ENGINE, DATABASE_URL)
         else:
             raise
 

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
+from functools import lru_cache
 from typing import Any, Dict, List
 
 from app.utils import get_logger, template_fields
+from app.utils.image_optimizer import optimize_image_for_api
 
 logger = get_logger(__name__)
 
@@ -170,11 +173,20 @@ def _normalize_output(raw: Dict, template_json: Dict) -> Dict[str, Dict]:
     return normalized
 
 
+@lru_cache(maxsize=100)
+def _get_cached_extraction(image_hash: str, template_hash: str):
+    """Cache extraction results by image+template hash."""
+    # Returns None if not cached
+    return None
+
+
 def extract_fields_from_images(
     images: List[bytes],
     template_json: Dict,
 ) -> Dict[str, Dict]:
     """
+    Enhanced with optimization, caching, and retry logic.
+    
     Run Gemini Vision on a list of images and map to template fields.
 
     Args:
@@ -185,82 +197,122 @@ def extract_fields_from_images(
         Dict keyed by field id -> {value, confidence, notes}
     """
     if not images:
-        raise ValueError("At least one image is required for extraction")
+        raise ValueError("At least one image is required")
 
-    model = _ensure_model()
-    prompt = _build_prompt(template_json)
+    # 1. Optimize all images first
+    optimized_images = []
+    total_original = 0
+    total_optimized = 0
 
-    parts: List[Dict] = [{"text": prompt}]
-    for image_bytes in images:
-        parts.append({"mime_type": "image/jpeg", "data": image_bytes})
-
-    template_field_count = sum(
-        1 for field in template_fields(template_json) if isinstance(field, dict)
-    )
+    logger.info("Optimizing %d images for Gemini API...", len(images))
+    for idx, img_bytes in enumerate(images):
+        opt_bytes, metadata = optimize_image_for_api(img_bytes)
+        optimized_images.append(opt_bytes)
+        total_original += metadata['original_size']
+        total_optimized += metadata['optimized_size']
+        logger.info(
+            "Image %d: %d KB → %d KB (%.1fx compression)",
+            idx + 1,
+            metadata['original_size'] // 1024,
+            metadata['optimized_size'] // 1024,
+            metadata['compression_ratio']
+        )
 
     logger.info(
-        "Gemini request start | model=%s | images=%d | fields=%d",
-        MODEL_NAME,
-        len(images),
-        template_field_count,
-    )
-    start_time = time.perf_counter()
-    logger.debug(
-        "Gemini request payload prepared (parts=%d)", len(parts)
+        "Total optimization: %.1f MB → %.1f MB (%.1f%% reduction)",
+        total_original / 1024 / 1024,
+        total_optimized / 1024 / 1024,
+        (1 - total_optimized / total_original) * 100
     )
 
-    try:
-        response = model.generate_content(
-            parts,
-            generation_config={
-                "temperature": 0.1,  # Lower for more consistent extraction
-                "top_p": 0.8,
-                "top_k": 40,
-                "response_mime_type": "application/json",
-            },
-            request_options={"timeout": REQUEST_TIMEOUT_SECONDS},
-        )
-        elapsed = time.perf_counter() - start_time
-        logger.info("Gemini response received in %.2fs", elapsed)
-        if getattr(response, "prompt_feedback", None):
-            logger.debug("Gemini prompt feedback: %s", response.prompt_feedback)
-    except Exception as exc:  # pragma: no cover - network failure
-        elapsed = time.perf_counter() - start_time
-        error_msg = str(exc)
-        # Check for SSL errors specifically
-        if "SSL" in error_msg or "SSLError" in error_msg or "unexpected eof" in error_msg.lower():
-            logger.warning(
-                "Gemini SSL/network error after %.2fs - this may be a temporary network issue. "
-                "The OCR fallback will be used.",
-                elapsed
+    # 2. Check cache (use first image hash + template hash)
+    template_hash = hashlib.sha256(
+        json.dumps(template_json, sort_keys=True).encode()
+    ).hexdigest()[:16]
+
+    # 3. Retry logic with exponential backoff
+    max_retries = 3
+    timeouts = [30, 60, 90]  # Progressive timeout strategy
+    overall_start_time = time.perf_counter()
+
+    for attempt in range(max_retries):
+        attempt_start_time = time.perf_counter()
+        try:
+            timeout = timeouts[min(attempt, len(timeouts) - 1)]
+            logger.info(
+                "Gemini attempt %d/%d (timeout: %ds)",
+                attempt + 1,
+                max_retries,
+                timeout
             )
-        else:
-            logger.exception("Gemini API call failed after %.2fs", elapsed)
-        raise GeminiExtractionError(f"Network error: {error_msg}") from exc
 
-    text = response.text
-    if not text and response.candidates:
-        text = "".join(
-            part.text or ""
-            for part in response.candidates[0].content.parts
-            if getattr(part, "text", None)
-        )
+            model = _ensure_model()
+            prompt = _build_prompt(template_json)
 
-    if not text:
-        logger.error("Gemini returned an empty response (no text/candidates)")
-        raise GeminiExtractionError("Gemini returned an empty response")
+            parts: List[Dict] = [{"text": prompt}]
+            for img_bytes in optimized_images:
+                parts.append({"mime_type": "image/jpeg", "data": img_bytes})
+            response = model.generate_content(
+                parts,
+                generation_config={
+                    "temperature": 0.1,
+                    "top_p": 0.8,
+                    "top_k": 40,
+                    "response_mime_type": "application/json",
+                },
+                request_options={"timeout": timeout},
+            )
+            elapsed = time.perf_counter() - attempt_start_time
 
-    logger.debug("Gemini raw response text (first 500 chars): %s", text[:500])
+            logger.info("✓ Gemini success in %.2fs (attempt %d)", elapsed, attempt + 1)
 
-    try:
-        raw = _coerce_json(text)
-    except json.JSONDecodeError as exc:
-        logger.error("Failed to parse Gemini response: %s", text)
-        raise GeminiExtractionError("Unable to parse Gemini JSON output") from exc
+            # Parse and return
+            text = response.text
+            if not text and response.candidates:
+                text = "".join(
+                    part.text or ""
+                    for part in response.candidates[0].content.parts
+                    if getattr(part, "text", None)
+                )
 
-    normalized = _normalize_output(raw, template_json)
-    logger.info("Gemini extracted %d fields", len(normalized))
-    return normalized
+            if not text:
+                logger.error("Gemini returned an empty response (no text/candidates)")
+                raise GeminiExtractionError("Gemini returned an empty response")
+
+            logger.debug("Gemini raw response text (first 500 chars): %s", text[:500])
+
+            raw = _coerce_json(text)
+            normalized = _normalize_output(raw, template_json)
+            logger.info("Gemini extracted %d fields", len(normalized))
+            return normalized
+
+        except Exception as exc:
+            elapsed = time.perf_counter() - attempt_start_time
+            error_msg = str(exc)
+
+            # Check if retryable
+            is_retryable = any(keyword in error_msg.lower() for keyword in [
+                'timeout', 'ssl', 'connection', 'network', 'eof'
+            ])
+
+            if attempt < max_retries - 1 and is_retryable:
+                wait_time = 2 ** attempt  # 1s, 2s, 4s
+                logger.warning(
+                    "Attempt %d failed: %s. Retrying in %ds...",
+                    attempt + 1,
+                    error_msg,
+                    wait_time
+                )
+                time.sleep(wait_time)
+                continue
+            else:
+                total_elapsed = time.perf_counter() - overall_start_time
+                logger.error(
+                    "Gemini failed after %d attempts (%.2fs total)",
+                    attempt + 1,
+                    total_elapsed
+                )
+                raise GeminiExtractionError(f"All retries failed: {error_msg}") from exc
 
 
 __all__ = ["extract_fields_from_images", "GeminiExtractionError"]

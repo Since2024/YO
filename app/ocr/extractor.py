@@ -111,5 +111,55 @@ def extract_fields_with_ocr(image_path: str, template_json: Dict) -> Dict[str, D
     return extracted
 
 
-__all__ = ["extract_fields_with_ocr", "OCRFallbackError"]
+def extract_fields_from_multiple_images(
+    image_paths: List[str],
+    template_json: Dict
+) -> Dict[str, Dict]:
+    """
+    Process ALL images with OCR and merge results.
+    
+    Strategy:
+    - Extract from each image independently
+    - Merge by taking highest-confidence value for each field
+    - Track which image contributed each field
+    """
+    logger.warning("Running OCR fallback on %d images", len(image_paths))
+    
+    all_extractions = []
+    for idx, img_path in enumerate(image_paths):
+        try:
+            logger.info("OCR processing image %d/%d: %s", idx + 1, len(image_paths), img_path)
+            extraction = extract_fields_with_ocr(img_path, template_json)
+            # Tag with source image
+            for field_data in extraction.values():
+                field_data['source_image'] = idx + 1
+            all_extractions.append(extraction)
+        except OCRFallbackError as e:
+            logger.warning("OCR failed on image %d: %s", idx + 1, e)
+            continue
+    
+    if not all_extractions:
+        raise OCRFallbackError("OCR failed on all images")
+    
+    # Merge results - take highest confidence for each field
+    merged: Dict[str, Dict] = {}
+    for extraction in all_extractions:
+        for fid, data in extraction.items():
+            if fid not in merged:
+                merged[fid] = data
+            else:
+                # Keep higher confidence value
+                if data.get('confidence', 0) > merged[fid].get('confidence', 0):
+                    old_conf = merged[fid].get('confidence', 0)
+                    merged[fid] = data
+                    logger.debug(
+                        "Field %s: replaced (conf %.2f → %.2f)",
+                        fid, old_conf, data.get('confidence', 0)
+                    )
+    
+    logger.info("OCR merged %d fields from %d images", len(merged), len(all_extractions))
+    return merged
+
+
+__all__ = ["extract_fields_with_ocr", "extract_fields_from_multiple_images", "OCRFallbackError"]
 

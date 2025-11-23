@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, DateTime, Integer, String, Text, Index
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -22,6 +22,12 @@ class FormSubmission(Base):
     gemini_json = Column(Text, nullable=False)
     normalized_fields = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Add indexes for common queries
+    __table_args__ = (
+        Index('idx_user_email_created', 'user_email', 'created_at'),
+        Index('idx_template_file', 'template_file'),
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -69,6 +75,12 @@ class UserProfile(Base):
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Indexes already defined via index=True on columns
+    # But add compound index for better performance
+    __table_args__ = (
+        Index('idx_email_updated', 'user_email', 'updated_at'),
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
