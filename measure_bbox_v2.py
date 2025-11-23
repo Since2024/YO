@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-image_path = 'app/templates/sampati_front.jpg'
+image_path = 'app/templates/business_front.jpg'
 original = cv2.imread(image_path)
 
 zoom = 0.5

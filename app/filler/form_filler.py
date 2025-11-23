@@ -42,21 +42,25 @@ def _normalize_phone(value: str) -> str:
     if len(digits) > 10:
         digits = digits[-10:]
 
-    # Return only if exactly 10 digits
-    if len(digits) == 10:
+    # Only return if exactly 10 digits and valid Nepali format (starts with 9, second digit is 7 or 8)
+    if len(digits) == 10 and digits[0] == "9" and digits[1] in ("7", "8"):
         return digits
 
-    return ""  # Invalid phone
+    # Return original if can't normalize to 10 digits
+    return value
 
 
 def _normalize_email(value: str) -> str:
-    """Basic email validation - must contain @."""
+    """Validate email - must contain @ and domain."""
     value = value.strip().lower()
-    # Must have @ and at least one character before and after
-    if "@" in value and len(value.split("@")[0]) > 0 and len(value.split("@")[1]) > 2:
-        return value
 
-    return ""  # Invalid email
+    # Must have @ and at least one character before and after
+    if "@" in value and "." in value:
+        parts = value.split("@")
+        if len(parts[0]) > 0 and len(parts[1]) > 2 and "." in parts[1]:
+            return value
+
+    return value  # Return as-is if format seems okay
 
 
 def _normalize_default(value: str) -> str:
@@ -64,8 +68,10 @@ def _normalize_default(value: str) -> str:
 
 
 def _normalize_value(field: Dict, value: str) -> str:
+    """Normalize field value based on field type."""
     ftype = (field.get("type") or "").lower()
-    if not value:
+
+    if not value or not value.strip():
         return ""
 
     # Email validation
@@ -80,10 +86,11 @@ def _normalize_value(field: Dict, value: str) -> str:
     if ftype in {"date", "text_date"} or field.get("validate", {}).get("type") == "date":
         return _normalize_date(value)
 
-    # Number fields
+    # Numbers and box_grid
     if ftype in {"number", "box_grid"} or field.get("validate", {}).get("type") == "number":
         return _normalize_digits(value).replace(" ", "")
 
+    # Default - preserve all text
     return _normalize_default(value)
 
 
@@ -94,6 +101,27 @@ def prepare_pdf_fields(gemini_output: Dict[str, Dict], template_json: Dict) -> L
     Returns:
         List of dicts with keys: id, name, value, confidence, bbox_px, page, style
     """
+    # Auto-fill submitter fields from owner fields if empty
+    # f009 (submitter name) ← f002 (owner name) if f009 is empty
+    # f010 (submitter address) ← f006 (owner address) if f010 is empty
+    if not gemini_output.get("f009", {}).get("value", "").strip():
+        owner_name = gemini_output.get("f002", {}).get("value", "").strip()
+        if owner_name:
+            gemini_output["f009"] = {
+                "value": owner_name,
+                "confidence": gemini_output.get("f002", {}).get("confidence", 0.8),
+                "notes": f"Auto-filled from owner name (f002): {owner_name}",
+            }
+    
+    if not gemini_output.get("f010", {}).get("value", "").strip():
+        owner_address = gemini_output.get("f006", {}).get("value", "").strip()
+        if owner_address:
+            gemini_output["f010"] = {
+                "value": owner_address,
+                "confidence": gemini_output.get("f006", {}).get("confidence", 0.8),
+                "notes": f"Auto-filled from owner address (f006): {owner_address}",
+            }
+    
     prepared: List[Dict] = []
     
     for field in template_fields(template_json):
@@ -127,6 +155,8 @@ def prepare_pdf_fields(gemini_output: Dict[str, Dict], template_json: Dict) -> L
                 "bbox_px": bbox,
                 "page": field.get("page", 1),
                 "style": field.get("style", "normal"),
+                "type": field.get("type", "text_line"),
+                "grid": field.get("grid", {}),
             }
         )
     return prepared

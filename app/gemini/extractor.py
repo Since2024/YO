@@ -26,7 +26,7 @@ _MODEL_CANDIDATES = (
 MODEL_NAME = _MODEL_CANDIDATES[0]
 API_ENDPOINT = "https://generativelanguage.googleapis.com"
 _GENAI = None
-REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_TIMEOUT_SECONDS = 60  # Increased timeout for SSL issues
 
 
 class GeminiExtractionError(RuntimeError):
@@ -57,11 +57,12 @@ def _build_prompt(template_json: Dict) -> str:
             "You are extracting data from Nepali government documents (citizenship certificates, forms, etc.) "
             "to fill a land tax form template. Use SEMANTIC MAPPING - understand the MEANING of fields, not just labels. "
             "\n\nSemantic Mapping Rules:"
-            "\n- Citizenship 'नाम धर:' → Land Tax 'जग्गा/धनीको नाम र थर' (owner name)"
+            "\n- Citizenship 'नाम धर:' → Land Tax 'जग्गा/धनीको नाम र थर' (owner name) AND 'नाम थर' (submitter name f009)"
             "\n- Citizenship 'बाबुको नाम धर:' → Land Tax 'बाबु/पतिको नाम र थर' (father name)"
             "\n- Citizenship 'जन्म मिति:' → Use for date fields if needed"
             "\n- Citizenship 'जिल्ला:' → Can be part of permanent address"
             "\n- Citizenship 'गाउँपालिका/नगरपालिका:' → Part of address"
+            "\n- Citizenship address fields → Land Tax 'ठेगाना' (submitter address f010) - same as owner address"
             "\n\nIMPORTANT:"
             "\n- Map fields by MEANING, not by exact label match"
             "\n- Extract ALL readable text from the source document"
@@ -77,7 +78,9 @@ def _build_prompt(template_json: Dict) -> str:
         "examples": {
             "f002": "हसन गाहा (extracted from citizenship 'नाम धर:')",
             "f003": "धन राज गाहा (extracted from citizenship 'बाबुको नाम धर:')",
-            "f006": "कालीगण्डकी, स्याङ्जा (combined from citizenship address fields)"
+            "f006": "कालीगण्डकी, स्याङ्जा (combined from citizenship address fields)",
+            "f009": "हसन गाहा (same as f002 - person submitting is usually the owner)",
+            "f010": "कालीगण्डकी, स्याङ्जा (same as f006 - submitter address is usually owner address)"
         }
     }
     return json.dumps(instructions, ensure_ascii=False, indent=2)
@@ -223,8 +226,17 @@ def extract_fields_from_images(
             logger.debug("Gemini prompt feedback: %s", response.prompt_feedback)
     except Exception as exc:  # pragma: no cover - network failure
         elapsed = time.perf_counter() - start_time
-        logger.exception("Gemini API call failed after %.2fs", elapsed)
-        raise GeminiExtractionError(str(exc)) from exc
+        error_msg = str(exc)
+        # Check for SSL errors specifically
+        if "SSL" in error_msg or "SSLError" in error_msg or "unexpected eof" in error_msg.lower():
+            logger.warning(
+                "Gemini SSL/network error after %.2fs - this may be a temporary network issue. "
+                "The OCR fallback will be used.",
+                elapsed
+            )
+        else:
+            logger.exception("Gemini API call failed after %.2fs", elapsed)
+        raise GeminiExtractionError(f"Network error: {error_msg}") from exc
 
     text = response.text
     if not text and response.candidates:

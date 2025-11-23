@@ -8,7 +8,8 @@ Minimal MVP that turns batches of Nepali government forms into structured JSON, 
 - **OCR fallback** (Tesseract/OpenCV) whenever Gemini is unavailable.
 - **Template-driven normalization** in `app/filler/form_filler.py`.
 - **ReportLab + Noto Sans Devanagari** PDF generator with simple style hooks.
-- **SQLAlchemy + MySQL/SQLite** persistence via `app/db`.
+- **SQLAlchemy + MySQL/SQLite** persistence via `app/db` (MySQL optional, SQLite default).
+- **User Profile System** for saving and reusing extracted data across form submissions.
 - **One CLI + Streamlit UI** calling the same core functions.
 
 Repository layout (only the files that remain after cleanup):
@@ -53,6 +54,11 @@ export MYSQL_DB=firstchild
 
 The database tables are created automatically the first time you run the CLI/UI.
 
+**Database Selection:**
+- If `MYSQL_HOST` (or `DB_HOST`) is set, MySQL will be used.
+- If `DATABASE_URL` is set, it takes precedence over other settings.
+- Otherwise, SQLite is used as the default (stored in `artifacts/fomo.sqlite3`).
+
 ## CLI – Multi-image extraction
 
 ```
@@ -83,20 +89,38 @@ streamlit run app/frontend/ui.py
 
 Capabilities:
 
+- **User Profile Management:**
+  - Enter your email in the sidebar to create/load your profile.
+  - Auto-fill forms from saved profile data with one click.
+  - Save extracted data to your profile for future use.
+  - View your submission statistics.
 - Drag/drop multiple images.
 - Live preview and Gemini extraction with OCR fallback.
-- Inspect the JSON payload.
+- Review and edit extracted data before PDF generation.
 - Generate PDF + save to DB with one click.
+
+## Database Models
+
+The application uses two main database models:
+
+- **`FormSubmission`**: Stores completed form extractions with raw JSON, normalized fields, and generated PDF paths.
+- **`UserProfile`**: Stores reusable user data (name, address, contact info, business details) for auto-filling future forms.
+
+Both tables are created automatically on first run.
 
 ## Environment Variables
 
 | Name             | Description                                      |
 | ---------------- | ------------------------------------------------ |
 | `GEMINI_API_KEY` | Required. Google Generative AI key               |
-| `GEMINI_MODEL`   | Optional. Defaults to `gemini-1.5-flash`         |
-| `DATABASE_URL`   | Optional full SQLAlchemy URL                     |
-| `MYSQL_*`/`DB_*` | Optional components for building a MySQL URL     |
-| `SQLITE_PATH`    | Optional path for SQLite fallback                |
+| `GEMINI_MODEL`   | Optional. Defaults to `gemini-2.5-flash`         |
+| `DATABASE_URL`   | Optional full SQLAlchemy URL (overrides all other DB settings) |
+| `MYSQL_HOST`     | Optional. MySQL hostname (or use `DB_HOST`)      |
+| `MYSQL_USER`     | Optional. MySQL username (or use `DB_USER`, defaults to `root`) |
+| `MYSQL_PASSWORD` | Optional. MySQL password (or use `DB_PASSWORD`) |
+| `MYSQL_DB`       | Optional. MySQL database name (or use `DB_NAME`, defaults to `fomo`) |
+| `MYSQL_PORT`     | Optional. MySQL port (or use `DB_PORT`, defaults to `3306`) |
+| `SQLITE_PATH`    | Optional path for SQLite database (defaults to `artifacts/fomo.sqlite3`) |
 | `LOG_LEVEL`      | INFO by default                                  |
 
 ## Tests

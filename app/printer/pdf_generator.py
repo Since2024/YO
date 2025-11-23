@@ -77,13 +77,18 @@ def create_filled_pdf(
     
     # Register Nepali font
     nep_font_path = Path(__file__).parent / "fonts" / "NotoSansDevanagari-Regular.ttf"
+    has_noto = False
     if nep_font_path.exists():
         _ensure_font()
-        font_name = FONT_NAME
-        logger.info("Using Nepali font: NotoSansDevanagari")
+        has_noto = True
+        logger.info("Nepali font available: NotoSansDevanagari")
     else:
-        logger.warning(f"Nepali font not found, using Helvetica")
-        font_name = 'Helvetica'
+        logger.warning(f"Nepali font not found at {nep_font_path}, using Helvetica for all text")
+    
+    # Helper function to detect Devanagari characters
+    def _has_devanagari(text: str) -> bool:
+        """Check if text contains Devanagari (Nepali) characters."""
+        return any('\u0900' <= char <= '\u097F' for char in text)
     
     # Process each field
     for field in fields:
@@ -116,12 +121,14 @@ def create_filled_pdf(
         # Convert to PDF coordinates
         pdf_y = bg_height - y - h
 
-        # Set font and color
-        c.setFont(font_name, font_size)
+        # Set color
         c.setFillColor(colors.black)
 
         # Handle box_grid fields differently
         if field_type == "box_grid":
+            # Box grid always uses Helvetica for digits
+            c.setFont('Helvetica', font_size)
+            
             # Get grid configuration from field
             grid_config = field.get("grid", {})
             num_boxes = grid_config.get("boxes", 5)
@@ -140,10 +147,17 @@ def create_filled_pdf(
 
                 c.drawString(digit_x, final_y, digit)
 
-            logger.info(f"{fid}: '{value}' → split into {len(digits)} boxes")
+            logger.info(f"{fid}: '{value}' → split into {len(digits)} boxes (font=Helvetica)")
 
         else:
-            # Regular text field
+            # Regular text field - choose font based on content
+            if has_noto and _has_devanagari(value):
+                font_name = FONT_NAME
+            else:
+                font_name = 'Helvetica'  # Use Helvetica for English/numbers
+            
+            c.setFont(font_name, font_size)
+            
             value = _apply_style(str(value), field.get("style"))
             text_offset_y = (h - font_size) / 2 + font_size * 0.25
             final_y = pdf_y + text_offset_y
@@ -151,7 +165,7 @@ def create_filled_pdf(
 
             c.drawString(final_x, final_y, value)
 
-            logger.info(f"{fid}: '{value}' at x={final_x:.1f}, y={final_y:.1f}")
+            logger.info(f"{fid}: '{value}' at x={final_x:.1f}, y={final_y:.1f} (font={font_name})")
     
     c.save()
     logger.info(f"✓ PDF saved: {output_path}")

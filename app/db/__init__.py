@@ -1,7 +1,7 @@
 """Database helpers (SQLAlchemy)."""
 
 from .connection import get_session, init_db
-from .models import Base, FormSubmission
+from .models import Base, FormSubmission, UserProfile
 
-__all__ = ["Base", "FormSubmission", "get_session", "init_db"]
+__all__ = ["Base", "FormSubmission", "UserProfile", "get_session", "init_db"]
 
