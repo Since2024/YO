@@ -16,7 +16,10 @@ logger = get_logger(__name__)
 
 
 def _sanitize_model_name(name: str) -> str:
-    return name.replace("models/", "") if name.startswith("models/") else name
+    """Remove 'models/' prefix if present - library handles it automatically."""
+    if not name:
+        return name
+    return name.replace("models/", "")
 
 
 _env_model = os.getenv("GEMINI_MODEL")
@@ -93,7 +96,14 @@ def _ensure_model() -> Any:
     global _GENAI, MODEL_NAME
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise GeminiExtractionError("GEMINI_API_KEY is not set")
+        error_msg = "GEMINI_API_KEY is not set. Please set it in your environment variables."
+        logger.error(error_msg)
+        raise GeminiExtractionError(error_msg)
+    if not api_key.strip():
+        error_msg = "GEMINI_API_KEY is set but empty. Please provide a valid API key."
+        logger.error(error_msg)
+        raise GeminiExtractionError(error_msg)
+    
     if _GENAI is None:
         try:
             import google.generativeai as genai_mod  # type: ignore
@@ -103,24 +113,43 @@ def _ensure_model() -> Any:
                 "Add it via pip install google-generativeai."
             ) from exc
         _GENAI = genai_mod
-        _GENAI.configure(
-            api_key=api_key,
-            transport="rest",
-            client_options={"api_endpoint": API_ENDPOINT},
-        )
+        try:
+            # Configure without explicit endpoint to use default (v1 API)
+            # This allows access to newer models like gemini-2.5-flash
+            _GENAI.configure(
+                api_key=api_key,
+                transport="rest",
+            )
+        except Exception as exc:
+            error_msg = f"Failed to configure Gemini API: {exc}"
+            logger.error(error_msg)
+            raise GeminiExtractionError(error_msg) from exc
 
     last_error: Exception | None = None
     for candidate in _MODEL_CANDIDATES:
         try:
+            # Try to create the model - this will validate the model name
             model = _GENAI.GenerativeModel(candidate)
+            # Test if model is accessible by checking if we can get model info
+            # (This is a lightweight check that doesn't make an API call)
             if candidate != MODEL_NAME:
                 logger.info("Gemini: switching to fallback model %s", candidate)
             MODEL_NAME = candidate
+            logger.info("Gemini: successfully initialized model %s", candidate)
             return model
         except Exception as exc:
             last_error = exc
+            error_str = str(exc)
+            # Check for authentication errors
+            if any(keyword in error_str.lower() for keyword in ['401', 'unauthorized', 'api key', 'invalid', 'permission', '403', 'forbidden']):
+                error_msg = f"Gemini API authentication failed for model {candidate}: {error_str}. Please check your GEMINI_API_KEY."
+                logger.error(error_msg)
+                raise GeminiExtractionError(error_msg) from exc
             logger.warning("Gemini: failed to initialize model %s: %s", candidate, exc)
-    raise GeminiExtractionError("Unable to initialize Gemini model") from last_error
+    
+    error_msg = f"Unable to initialize any Gemini model. Last error: {last_error}"
+    logger.error(error_msg)
+    raise GeminiExtractionError(error_msg) from last_error
 
 
 def _coerce_json(payload: str) -> Dict:
@@ -225,6 +254,18 @@ def extract_fields_from_images(
         (1 - total_optimized / total_original) * 100
     )
 
+    # Check total request size (Gemini has limits - typically 20MB for free tier, 100MB+ for paid)
+    # Prompt text is usually small, so we check image sizes
+    MAX_TOTAL_SIZE_MB = 20  # Conservative limit for free tier
+    total_size_mb = total_optimized / 1024 / 1024
+    if total_size_mb > MAX_TOTAL_SIZE_MB:
+        logger.warning(
+            "Total image size (%.2f MB) exceeds recommended limit (%d MB). "
+            "This may cause API errors.",
+            total_size_mb,
+            MAX_TOTAL_SIZE_MB
+        )
+
     # 2. Check cache (use first image hash + template hash)
     template_hash = hashlib.sha256(
         json.dumps(template_json, sort_keys=True).encode()
@@ -264,7 +305,26 @@ def extract_fields_from_images(
             )
             elapsed = time.perf_counter() - attempt_start_time
 
-            logger.info("✓ Gemini success in %.2fs (attempt %d)", elapsed, attempt + 1)
+            logger.info("✓ Gemini API call completed in %.2fs (attempt %d)", elapsed, attempt + 1)
+
+            # Check for blocked/filtered responses
+            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                if hasattr(response.prompt_feedback, 'block_reason') and response.prompt_feedback.block_reason:
+                    block_reason = response.prompt_feedback.block_reason
+                    error_msg = f"Gemini blocked the request: {block_reason}"
+                    logger.error(error_msg)
+                    raise GeminiExtractionError(error_msg)
+            
+            # Check candidates for safety ratings
+            if hasattr(response, 'candidates') and response.candidates:
+                for idx, candidate in enumerate(response.candidates):
+                    if hasattr(candidate, 'finish_reason'):
+                        if candidate.finish_reason and candidate.finish_reason != 1:  # 1 = STOP
+                            finish_reason_str = str(candidate.finish_reason)
+                            if 'safety' in finish_reason_str.lower() or 'blocked' in finish_reason_str.lower():
+                                error_msg = f"Gemini blocked response due to safety: {finish_reason_str}"
+                                logger.error(error_msg)
+                                raise GeminiExtractionError(error_msg)
 
             # Parse and return
             text = response.text
@@ -276,31 +336,109 @@ def extract_fields_from_images(
                 )
 
             if not text:
-                logger.error("Gemini returned an empty response (no text/candidates)")
-                raise GeminiExtractionError("Gemini returned an empty response")
+                # Log more details about why text is empty
+                logger.error("Gemini returned an empty response")
+                if hasattr(response, 'candidates') and response.candidates:
+                    for idx, candidate in enumerate(response.candidates):
+                        logger.error("Candidate %d: finish_reason=%s", idx, getattr(candidate, 'finish_reason', 'unknown'))
+                raise GeminiExtractionError("Gemini returned an empty response (no text/candidates)")
 
             logger.debug("Gemini raw response text (first 500 chars): %s", text[:500])
 
-            raw = _coerce_json(text)
-            normalized = _normalize_output(raw, template_json)
-            logger.info("Gemini extracted %d fields", len(normalized))
-            return normalized
+            try:
+                raw = _coerce_json(text)
+                normalized = _normalize_output(raw, template_json)
+                logger.info("Gemini extracted %d fields", len(normalized))
+                return normalized
+            except json.JSONDecodeError as json_exc:
+                logger.error("Failed to parse Gemini JSON response: %s", json_exc)
+                logger.error("Response text (first 1000 chars): %s", text[:1000])
+                raise GeminiExtractionError(f"Failed to parse Gemini JSON response: {json_exc}") from json_exc
 
         except Exception as exc:
             elapsed = time.perf_counter() - attempt_start_time
             error_msg = str(exc)
+            error_lower = error_msg.lower()
+            error_type = type(exc).__name__
+            
+            # Log detailed error information
+            logger.error(
+                "Gemini API error (attempt %d/%d, %.2fs): %s: %s",
+                attempt + 1,
+                max_retries,
+                elapsed,
+                error_type,
+                error_msg
+            )
+            
+            # Try to extract more details from the exception
+            error_details = error_msg
+            if hasattr(exc, 'message'):
+                error_details = f"{error_msg} | Details: {exc.message}"
+            if hasattr(exc, 'status_code'):
+                error_details = f"{error_msg} | Status: {exc.status_code}"
+            if hasattr(exc, 'reason'):
+                error_details = f"{error_msg} | Reason: {exc.reason}"
+            
+            # Check for quota/rate limit errors (429)
+            is_quota_error = any(keyword in error_lower for keyword in [
+                '429', 'quota', 'rate limit', 'rate_limit', 'too many requests',
+                'quota exceeded', 'billing', 'payment'
+            ])
+            
+            if is_quota_error:
+                total_elapsed = time.perf_counter() - overall_start_time
+                detailed_error = (
+                    f"Gemini API quota/rate limit exceeded: {error_details}. "
+                    "Please check your API quota, billing status, or wait before retrying."
+                )
+                logger.error(detailed_error)
+                raise GeminiExtractionError(detailed_error) from exc
 
-            # Check if retryable
-            is_retryable = any(keyword in error_msg.lower() for keyword in [
-                'timeout', 'ssl', 'connection', 'network', 'eof'
+            # Check for authentication/authorization errors (don't retry these)
+            is_auth_error = any(keyword in error_lower for keyword in [
+                '401', 'unauthorized', 'api key', 'invalid key', 'permission', 
+                '403', 'forbidden', 'authentication', 'api_key', 'api key invalid',
+                'invalid api key', 'api key not found'
+            ])
+            
+            if is_auth_error:
+                total_elapsed = time.perf_counter() - overall_start_time
+                detailed_error = (
+                    f"Gemini API authentication failed: {error_details}. "
+                    "Please verify your GEMINI_API_KEY is correct and has proper permissions."
+                )
+                logger.error(detailed_error)
+                raise GeminiExtractionError(detailed_error) from exc
+
+            # Check for content policy or invalid request errors (400)
+            is_content_error = any(keyword in error_lower for keyword in [
+                '400', 'bad request', 'invalid', 'content policy', 'safety',
+                'blocked', 'harmful', 'policy violation', 'image too large',
+                'request too large', 'payload too large'
+            ])
+            
+            if is_content_error:
+                total_elapsed = time.perf_counter() - overall_start_time
+                detailed_error = (
+                    f"Gemini API content/request error: {error_details}. "
+                    "This might be due to image size, content policy, or invalid request format."
+                )
+                logger.error(detailed_error)
+                raise GeminiExtractionError(detailed_error) from exc
+
+            # Check if retryable (network/timeout errors)
+            is_retryable = any(keyword in error_lower for keyword in [
+                'timeout', 'ssl', 'connection', 'network', 'eof', '503', '500', '502',
+                'service unavailable', 'bad gateway', 'gateway timeout'
             ])
 
             if attempt < max_retries - 1 and is_retryable:
                 wait_time = 2 ** attempt  # 1s, 2s, 4s
                 logger.warning(
-                    "Attempt %d failed: %s. Retrying in %ds...",
+                    "Attempt %d failed (retryable): %s. Retrying in %ds...",
                     attempt + 1,
-                    error_msg,
+                    error_details,
                     wait_time
                 )
                 time.sleep(wait_time)
@@ -308,11 +446,13 @@ def extract_fields_from_images(
             else:
                 total_elapsed = time.perf_counter() - overall_start_time
                 logger.error(
-                    "Gemini failed after %d attempts (%.2fs total)",
+                    "Gemini failed after %d attempts (%.2fs total): %s (type: %s)",
                     attempt + 1,
-                    total_elapsed
+                    total_elapsed,
+                    error_details,
+                    error_type
                 )
-                raise GeminiExtractionError(f"All retries failed: {error_msg}") from exc
+                raise GeminiExtractionError(f"All retries failed: {error_details}") from exc
 
 
 __all__ = ["extract_fields_from_images", "GeminiExtractionError"]

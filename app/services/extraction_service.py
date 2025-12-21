@@ -20,10 +20,16 @@ class ExtractionService:
     @staticmethod
     def extract_from_files(
         uploaded_files: List,
-        template: Dict
+        template: Dict,
+        force_refresh: bool = False
     ) -> Tuple[Dict[str, Dict], str, List[str]]:
         """
         Extract fields from uploaded files with caching support.
+        
+        Args:
+            uploaded_files: List of uploaded file objects
+            template: Template definition
+            force_refresh: If True, bypass cache and force fresh extraction
         
         Returns:
             (extraction_dict, engine_used, error_messages)
@@ -40,19 +46,23 @@ class ExtractionService:
             json.dumps(template, sort_keys=True).encode()
         ).hexdigest()[:16]
         
-        # Check cache first
-        cached = get_cached_extraction(image_hashes, template_hash)
-        if cached:
-            logger.info("Using cached extraction")
-            return cached, "cached", []
+        if force_refresh:
+            logger.info("Force refresh: bypassing cache")
+        else:
+            # Check for cached Gemini results first (prefer Gemini over OCR)
+            cached_gemini = get_cached_extraction(image_hashes, template_hash, engine_filter="gemini")
+            if cached_gemini:
+                logger.info("Using cached Gemini extraction")
+                return cached_gemini, "cached_gemini", []
         
-        # Try Gemini first
+        # Try Gemini first (always attempt fresh Gemini if no cached Gemini found)
+        
         try:
             logger.info("Starting Gemini extraction...")
             extraction = extract_fields_from_images(images_bytes, template)
             
-            # Cache successful extraction
-            set_cached_extraction(image_hashes, template_hash, extraction)
+            # Cache successful Gemini extraction
+            set_cached_extraction(image_hashes, template_hash, extraction, engine="gemini")
             
             return extraction, "gemini", []
             
@@ -61,7 +71,16 @@ class ExtractionService:
             logger.warning(error_msg)
             errors.append(error_msg)
             
-            # Fallback to OCR
+            # Log the full error details for debugging
+            logger.error("Gemini extraction error details: %s", exc, exc_info=True)
+            
+            # Fallback to OCR - check for cached OCR only if not forcing refresh
+            if not force_refresh:
+                cached_ocr = get_cached_extraction(image_hashes, template_hash, engine_filter="ocr")
+                if cached_ocr:
+                    logger.info("Using cached OCR extraction (Gemini failed, using previous OCR result)")
+                    return cached_ocr, "cached_ocr", errors
+            
             try:
                 logger.info("Falling back to OCR...")
                 temp_paths = []
@@ -77,8 +96,8 @@ class ExtractionService:
                 
                 extraction = extract_fields_from_multiple_images(temp_paths, template)
                 
-                # Cache successful OCR extraction
-                set_cached_extraction(image_hashes, template_hash, extraction)
+                # Cache OCR extraction (but mark it as OCR so we can retry Gemini later)
+                set_cached_extraction(image_hashes, template_hash, extraction, engine="ocr")
                 
                 # Cleanup
                 for path in temp_paths:

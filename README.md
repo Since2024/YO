@@ -113,7 +113,7 @@ Both tables are created automatically on first run.
 | Name             | Description                                      |
 | ---------------- | ------------------------------------------------ |
 | `GEMINI_API_KEY` | Required. Google Generative AI key               |
-| `GEMINI_MODEL`   | Optional. Defaults to `gemini-2.5-flash`         |
+| `GEMINI_MODEL`   | Optional. Defaults to `gemini-1.5-flash`         |
 | `DATABASE_URL`   | Optional full SQLAlchemy URL (overrides all other DB settings) |
 | `MYSQL_HOST`     | Optional. MySQL hostname (or use `DB_HOST`)      |
 | `MYSQL_USER`     | Optional. MySQL username (or use `DB_USER`, defaults to `root`) |

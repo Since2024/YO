@@ -23,9 +23,20 @@ def _get_cache_key(image_hashes: List[str], template_hash: str) -> str:
 
 def get_cached_extraction(
     image_hashes: List[str],
-    template_hash: str
+    template_hash: str,
+    engine_filter: Optional[str] = None
 ) -> Optional[Dict]:
-    """Retrieve cached extraction if available and fresh."""
+    """
+    Retrieve cached extraction if available and fresh.
+    
+    Args:
+        image_hashes: List of image hash strings
+        template_hash: Template hash string
+        engine_filter: If provided, only return cache if it matches this engine ('gemini' or 'ocr')
+    
+    Returns:
+        Cached extraction dict or None
+    """
     cache_key = _get_cache_key(image_hashes, template_hash)
     cache_file = CACHE_DIR / f"{cache_key}.json"
     
@@ -45,7 +56,17 @@ def get_cached_extraction(
             cache_file.unlink()
             return None
         
-        logger.info("Cache hit for key %s", cache_key[:16])
+        # Filter by engine if specified
+        cached_engine = data.get('engine', 'unknown')
+        if engine_filter and cached_engine != engine_filter:
+            logger.debug(
+                "Cache engine mismatch: cached=%s, requested=%s (skipping cache)",
+                cached_engine,
+                engine_filter
+            )
+            return None
+        
+        logger.info("Cache hit for key %s (engine: %s)", cache_key[:16], cached_engine)
         return data['extraction']
         
     except Exception as e:
@@ -57,9 +78,18 @@ def get_cached_extraction(
 def set_cached_extraction(
     image_hashes: List[str],
     template_hash: str,
-    extraction: Dict
+    extraction: Dict,
+    engine: str = "unknown"
 ) -> None:
-    """Store extraction result in cache."""
+    """
+    Store extraction result in cache.
+    
+    Args:
+        image_hashes: List of image hash strings
+        template_hash: Template hash string
+        extraction: Extraction result dict
+        engine: Engine used ('gemini', 'ocr', etc.)
+    """
     cache_key = _get_cache_key(image_hashes, template_hash)
     CACHE_DIR.mkdir(exist_ok=True, parents=True)
     cache_file = CACHE_DIR / f"{cache_key}.json"
@@ -70,12 +100,13 @@ def set_cached_extraction(
             'extraction': extraction,
             'image_hashes': image_hashes,
             'template_hash': template_hash,
+            'engine': engine,
         }
         
         with open(cache_file, 'w') as f:
             json.dump(data, f, indent=2)
         
-        logger.info("Cached extraction for key %s", cache_key[:16])
+        logger.info("Cached extraction for key %s (engine: %s)", cache_key[:16], engine)
         
     except Exception as e:
         logger.warning("Error writing cache: %s", e)

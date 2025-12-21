@@ -85,7 +85,7 @@ st.markdown("""
     
     /* Step cards */
     .step-card {
-        background: white;
+        background: #2d2d44;
         padding: 1.5rem;
         border-radius: 12px;
         border-left: 4px solid #6366f1;
@@ -699,6 +699,13 @@ if uploaded_files:
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        # Add force refresh option
+        force_refresh = st.checkbox(
+            "🔄 Force Fresh Extraction (bypass cache)",
+            value=False,
+            help="Check this to force a new Gemini extraction even if cached results exist"
+        )
+        
         if st.button("🚀 Extract with Gemini", use_container_width=True, type="primary"):
             if not api_key:
                 st.error("❌ GEMINI_API_KEY not set!")
@@ -713,10 +720,11 @@ if uploaded_files:
                 
                 start_time = time.time()
                 
-                # Use extraction service
+                # Use extraction service with force_refresh option
                 extraction, engine, errors = ExtractionService.extract_from_files(
                     uploaded_files,
-                    template
+                    template,
+                    force_refresh=force_refresh
                 )
                 
                 elapsed = time.time() - start_time
