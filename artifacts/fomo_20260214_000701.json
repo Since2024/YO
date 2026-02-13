@@ -1,0 +1,72 @@
+{
+  "f001": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Field f001 (आन्तरिक संकेत नं) should never be filled as per instructions."
+  },
+  "f002": {
+    "value": "हसन गाहा",
+    "confidence": 1.0,
+    "notes": "Extracted from 'नाम धर:' on citizenship certificate. [edited]"
+  },
+  "f003": {
+    "value": "धन राज गाहा",
+    "confidence": 1.0,
+    "notes": "Extracted from 'बाबुको नाम धर:' on citizenship certificate. [edited]"
+  },
+  "f004": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No matching data for 'बाजे/ससुराको नाम र थर' found in the source document."
+  },
+  "f005": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Field f005 (जग्गाधनीको पन नं) should never be mapped from citizenship number as per instructions."
+  },
+  "f006": {
+    "value": "कालीगण्डकी गाँउपा०-१, स्याङ्जा",
+    "confidence": 1.0,
+    "notes": "Combined from 'ठेगाना' and 'जिल्ला'/'गाउँपालिका' fields on citizenship certificate. [edited]"
+  },
+  "f007": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No mobile number found in the source document."
+  },
+  "f008": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No email address found in the source document."
+  },
+  "f009": {
+    "value": "हसन गाहा",
+    "confidence": 1.0,
+    "notes": "Assumed to be the same as the land owner's name (f002) as per semantic mapping rules and examples. [edited]"
+  },
+  "f010": {
+    "value": "कालीगण्डकी गाँउपा०-१, स्याङ्जा",
+    "confidence": 1.0,
+    "notes": "Assumed to be the same as the land owner's permanent address (f006) as per semantic mapping rules and examples. [edited]"
+  },
+  "f011": {
+    "value": "स्वयं",
+    "confidence": 0.8,
+    "notes": "Assumed 'स्वयं' (self) as the submitter's name matches the owner's name. [edited]"
+  },
+  "f012": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No mobile number found in the source document for the submitter."
+  },
+  "f014": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No submission date found in the source document. Birth date is present but not relevant for this field."
+  },
+  "f013": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "This field is for a signature, no text to extract."
+  }
+}
