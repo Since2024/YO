@@ -1,0 +1,72 @@
+{
+  "f001": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Field f001 should never be filled as per instructions."
+  },
+  "f002": {
+    "value": "बिकाश चौधरी",
+    "confidence": 1.0,
+    "notes": "Extracted from 'नाम थर' (Name) on the citizenship certificate. [edited]"
+  },
+  "f003": {
+    "value": "प्रेम नारायण चौधरी",
+    "confidence": 1.0,
+    "notes": "Extracted from 'बाबुको नाम थर' (Father's Name) on the citizenship certificate. [edited]"
+  },
+  "f004": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No direct semantic match for 'Grandfather/Father-in-law Name' found in the document."
+  },
+  "f005": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "Field f005 should never be mapped from citizenship number as per instructions."
+  },
+  "f006": {
+    "value": "पाल्हीनन्दन गा.पा.-६, नवलपरासी (ब.सु.प.)",
+    "confidence": 1.0,
+    "notes": "Combined from 'स्थायी बासस्थान' (Permanent Address) fields: 'गा.पा.: पाल्हीनन्दन', 'वडा नं.: ६', and 'जिल्ला: नवलपरासी (ब.सु.प.)'. [edited]"
+  },
+  "f007": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No mobile number found in the document."
+  },
+  "f008": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No email address found in the document."
+  },
+  "f009": {
+    "value": ".......",
+    "confidence": 1.0,
+    "notes": "Mapped from 'नाम थर' (Name) on the citizenship certificate, assuming the owner is the submitter as per semantic mapping rules. [edited]"
+  },
+  "f010": {
+    "value": "पाल्हीनन्दन गा.पा.-६, नवलपरासी (ब.सु.प.)",
+    "confidence": 1.0,
+    "notes": "Mapped from 'स्थायी बासस्थान' (Permanent Address) fields, assuming submitter's address is the same as the owner's address as per semantic mapping rules. [edited]"
+  },
+  "f011": {
+    "value": "स्वयं",
+    "confidence": 0.9,
+    "notes": "Inferred relationship as 'self' (owner) since the submitter's name matches the owner's name. [edited]"
+  },
+  "f012": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No mobile number found in the document for the submitter."
+  },
+  "f014": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No submission date found in the document."
+  },
+  "f013": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No signature found in the document for extraction."
+  }
+}

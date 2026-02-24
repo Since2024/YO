@@ -231,25 +231,107 @@ def validate_email(email: str) -> tuple[bool, str]:
 
 
 def validate_phone(phone: str) -> tuple[bool, str]:
-    """Validate phone number - 10 digits, starts with 9, second digit 7 or 8."""
+    """Validate phone number - exactly 10 digits, starts with 97 or 98."""
     if not phone or not phone.strip():
         return False, "Phone number cannot be empty"
     
-    # Remove spaces, dashes, and other characters
-    phone_clean = re.sub(r'[^\d]', '', phone.strip())
+    phone = phone.strip()
+    
+    # Keep only strict digit characters, no letters or random symbols
+    if re.search(r'[^\d\s\+\-\(\)]', phone):
+        return False, "Phone number can only contain digits"
+        
+    # Remove permitted formatting characters
+    phone_clean = re.sub(r'[^\d]', '', phone)
     
     # Check length
     if len(phone_clean) != 10:
         return False, "Phone number must be exactly 10 digits"
     
-    # Check first digit is 9
-    if phone_clean[0] != '9':
-        return False, "Phone number must start with 9"
+    # Check prefix
+    if not phone_clean.startswith(('97', '98')):
+        return False, "Phone number must start with 97 or 98"
     
-    # Check second digit is 7 or 8
-    if phone_clean[1] not in ['7', '8']:
-        return False, "Second digit must be 7 or 8"
+    return True, ""
+
+
+def validate_name(name: str) -> tuple[bool, str]:
+    """Validate name - no numbers, valid characters only."""
+    if not name or not name.strip():
+        return True, ""
+        
+    name = name.strip()
     
+    # Check for numbers
+    if any(char.isdigit() for char in name):
+        return False, "Name cannot contain numbers"
+    
+    # Check for repeating characters like "....."
+    if re.search(r'([.\-_])\1{2,}', name):
+        return False, "Name contains invalid repeating characters"
+        
+    # Valid characters: letters, spaces, nepali unicode, dots, dashes, apostrophes
+    if not re.match(r'^[\sA-Za-z\.\-\'\u0900-\u097F]+$', name):
+        return False, "Name contains invalid characters"
+        
+    # Check if it contains at least one letter/unicode char
+    if not re.search(r'[A-Za-z\u0900-\u097F]', name):
+        return False, "Name must contain letters"
+        
+    return True, ""
+
+
+def validate_generic_text(text: str) -> tuple[bool, str]:
+    """Validate generic text (addresses, business names) to prevent gibberish."""
+    if not text or not text.strip():
+        return True, ""
+    
+    text = text.strip()
+    
+    # Check for repeating characters like "....."
+    if re.search(r'([.\-_])\1{2,}', text):
+        return False, "Input contains invalid repeating characters"
+        
+    # Check if it contains at least one letter/unicode char or number
+    if not re.search(r'[A-Za-z0-9\u0900-\u097F]', text):
+        return False, "Input must contain valid letters or numbers"
+        
+    return True, ""
+
+
+def validate_code_5(code: str) -> tuple[bool, str]:
+    """Validate 5-digit economic indicator code."""
+    if not code or not code.strip():
+        return False, "Code cannot be empty"
+    
+    code = code.strip()
+    # Accept english and nepali numbers
+    code_en = re.sub(r'[०-९]', lambda x: str('०१२३४५६७८९'.index(x.group())), code)
+    
+    if not code_en.isdigit():
+        return False, "Code must contain only numbers"
+        
+    if len(code_en) != 5:
+        return False, "Code must be exactly 5 digits"
+        
+    return True, ""
+
+
+def validate_id_9(id_num: str) -> tuple[bool, str]:
+    """Validate 9-digit PAN or National ID."""
+    if not id_num or not id_num.strip():
+        return False, "ID cannot be empty"
+        
+    id_num = id_num.strip()
+    # Accept english and nepali numbers
+    id_en = re.sub(r'[०-९]', lambda x: str('०१२३४५६७८९'.index(x.group())), id_num)
+    
+    if not id_en.isdigit():
+        return False, "ID must contain only numbers"
+        
+    if len(id_en) != 9:
+        return False, "ID must be exactly 9 digits"
+        
     return True, ""
 
 
@@ -1037,11 +1119,23 @@ if "current_extraction" in st.session_state:
                     field_name_lower = field_name.lower()
                     field_label_lower = field_label.lower()
                     
+                    # Determine field types and required validation based on template definitions
                     is_email_field = ("email" in field_type or "email" in field_validate_type or 
                                      "email" in field_name_lower or "email" in field_label_lower)
                     is_phone_field = ("phone" in field_type or "phone" in field_validate_type or 
                                      "mobile" in field_name_lower or "mobile" in field_label_lower or
                                      "phone" in field_name_lower or "phone" in field_label_lower)
+                    
+                    # Business and organization names might contain numbers, so don't apply strict name validation to them.
+                    is_business_or_org = any(word in field_name_lower for word in ["business", "व्यवसाय", "सम्पत्ति", "कार्यालय", "निकाय"])
+                    
+                    is_personal_name_field = (("name" in field_name_lower or "name" in field_label_lower or "नाम" in field_label_lower) and 
+                                     not is_email_field and not is_phone_field and not is_business_or_org)
+                                     
+                    is_generic_text_field = field_validate_type == "string" and not is_personal_name_field and not is_email_field and not is_phone_field
+                    
+                    is_number_field = field.get("type") == "box_grid" or field_validate_type == "number" or "नं" in field_name_lower or "number" in field_label_lower
+                    expected_length = field.get("validate", {}).get("len")
                     
                     input_value = target_col.text_input(
                         label,
@@ -1050,6 +1144,34 @@ if "current_extraction" in st.session_state:
                         help=field_desc or None,
                         placeholder=field_label,
                     )
+                    
+                    # Validate number fields (5-digit code or 9-digit PAN/ID)
+                    if is_number_field and input_value:
+                        if expected_length == 5:
+                            code_valid, code_error = validate_code_5(input_value)
+                            if not code_valid:
+                                target_col.error(f"❌ {code_error}")
+                                input_value = current_value
+                        elif expected_length == 9:
+                            id_valid, id_error = validate_id_9(input_value)
+                            if not id_valid:
+                                target_col.error(f"❌ {id_error}")
+                                input_value = current_value
+                    
+                    # Validate generic text fields (addresses, organization names)
+                    if is_generic_text_field and input_value and not is_number_field:
+                        text_valid, text_error = validate_generic_text(input_value)
+                        if not text_valid:
+                            target_col.error(f"❌ {text_error}")
+                            input_value = current_value
+                            
+                    # Validate personal name field
+                    if is_personal_name_field and input_value:
+                        name_valid, name_error = validate_name(input_value)
+                        if not name_valid:
+                            target_col.error(f"❌ {name_error}")
+                            # Don't save invalid name - keep current value
+                            input_value = current_value
                     
                     # Validate email field
                     if is_email_field and input_value:
@@ -1482,7 +1604,6 @@ if "generated_pdf_path" in st.session_state:
                 type="primary"
             )
         
-        st.balloons()
         
         # Clear the generated PDF from session state after showing
         # (Don't clear immediately, let user download first)
