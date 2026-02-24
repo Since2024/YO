@@ -357,10 +357,6 @@ def _template_display_name(path: Path) -> str:
     else:
         base_name = template.get('name', path.stem)
     
-    # Change display name for business_front.ocr.json to "व्यवसाय कर फारम_back"
-    if path.name == "business_front.ocr.json":
-        return "व्यवसाय कर फारम back"
-    
     return base_name
 
 

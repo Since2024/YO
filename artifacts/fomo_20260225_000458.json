@@ -1,0 +1,77 @@
+{
+  "f001": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "As per instruction, never fill this field."
+  },
+  "f002": {
+    "value": "१",
+    "confidence": 1.0,
+    "notes": "Extracted from Permanent Address 'Ward No.:1'. [edited]"
+  },
+  "f003": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No business name found in the citizenship certificate."
+  },
+  "f004": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No local registration number found in the citizenship certificate."
+  },
+  "f005": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No business registration date found in the citizenship certificate."
+  },
+  "f006": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No business operation date found in the citizenship certificate."
+  },
+  "f007": {
+    "value": "HASAN GAHA",
+    "confidence": 1.0,
+    "notes": "Extracted from 'Full Name' on the citizenship certificate, semantically mapped to owner/operator name. [edited]"
+  },
+  "f008": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "National ID Number not found. Citizenship Certificate No. is a different identifier."
+  },
+  "f009": {
+    "value": "१",
+    "confidence": 1.0,
+    "notes": "Auto-filled from owner name (f002): १"
+  },
+  "f010": {
+    "value": "कालीगण्डकी, स्याङ्जा, वडा नं १",
+    "confidence": 1.0,
+    "notes": "Combined from Permanent Address fields: 'R. M.: Kaligandaki', 'District: Syangja', 'Ward No.:1'. [edited]"
+  },
+  "f011": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No specific street/lane name found in the address."
+  },
+  "f012": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No total capital information found in the citizenship certificate."
+  },
+  "f013": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No business PAN number found in the citizenship certificate."
+  },
+  "f014": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No email address found in the citizenship certificate."
+  },
+  "f016": {
+    "value": "",
+    "confidence": 0.0,
+    "notes": "No information about registration in other authorities found in the citizenship certificate."
+  }
+}

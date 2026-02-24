@@ -15,11 +15,23 @@ TEMPLATES_DIR = project_root() / "app" / "templates"
 
 
 def list_template_files() -> List[Path]:
-    """Return sorted JSON template paths."""
+    """Return sorted JSON template paths, excluding internal/OCR files."""
     if not TEMPLATES_DIR.exists():
         logger.warning("Template directory %s is missing", TEMPLATES_DIR)
         return []
-    return sorted(TEMPLATES_DIR.glob("*.json"))
+        
+    # Get all json files but exclude OCR/internal ones
+    all_templates = sorted(TEMPLATES_DIR.glob("*.json"))
+    
+    # Filter out business_front.ocr.json or any file containing 'business_back' if it exists.
+    # User asked to remove "bussiness_back", which corresponds to business_front.ocr.json in structure
+    # or the user might just want only valid form templates.
+    valid_templates = [
+        p for p in all_templates 
+        if "ocr.json" not in p.name and "back" not in p.name.lower()
+    ]
+    
+    return valid_templates
 
 
 def load_template_file(template_name: str) -> Dict:
